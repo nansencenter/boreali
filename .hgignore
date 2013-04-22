@@ -1,0 +1,15 @@
+# use glob syntax.
+syntax: glob
+
+*.so
+*.o
+*~
+*.pyc
+lm_wrap.*
+lm.py
+*.png
+*.odp
+*.pdf
+*.kml
+*.kmz
+*.jpg
