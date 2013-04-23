@@ -1,11 +1,11 @@
+import os
 from time import time 
+import inspect
 
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy import interpolate
-#from scipy.optimize import fmin, fmin_bfgs, fmin_ncg
 
-from config_file import ConfigFile
-#import ho
 import lm
 
 class Boreali():
@@ -59,12 +59,24 @@ class Boreali():
         
         self.albedos = albedos
         self.albedoNames = albedoNames
+
+    def get_albedo(self, bottom):
+        '''Get array with albedos for each valid pixel'''
+        #import pdb; pdb.set_trace()
+        albedo = np.zeros((len(bottom), len(self.wavelen)))
+        uniqBottom = np.unique(bottom)
+        for ubt in uniqBottom:
+            albedo[bottom == ubt] = self.albedos[ubt](self.wavelen) 
+            
+        return albedo
+        
         
     def read_ho_models(self, hoFileName='', iModelName='ladoga'):
         '''Read file with HO-models and prepare interpolators'''
         
         # READ HO_MODELS FROM FILE
-        f = open(hoFileName)
+        selfDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))        
+        f = open(os.path.join(selfDir, hoFileName))
         noOfModels = int(f.readline())
         hoModels = {}
         for i in range(0, noOfModels):
@@ -105,11 +117,12 @@ class Boreali():
 
         return hoModelInterp
     
-    def get_wavelengths(self, img, wavelen=None):
+    def get_wavelengths(self, img, opts, wavelen=None):
         '''Return list of wavelengths from the available bands in img'''
         imgBands = img.bands()
         wavelengths = []
-
+        
+        bands = 0
         for imgBand in imgBands:
             bandName = imgBands[imgBand].get('name', '')
             if 'Rrsw_' in bandName or 'rrsw_' in bandName:
@@ -117,69 +130,71 @@ class Boreali():
                 if (wavelen is None or
                         (wavelen is not None and wl in wavelen)):
                     wavelengths.append(wl)
+                    bands += 1
+                if bands >= opts[0]:
+                    break
         return wavelengths
     
-    def get_data_list(self, img, wavelen):
-        '''Convert input bands into list of Rrsw spectra'''
-        mask = img['mask']
+    def get_rrsw(self, img, mask=None):
+        '''Get array with RRSW for valid pixels and mask of valid pixels'''
         rrsw = []
-        for wl in wavelen:
+        for wl in self.wavelen:
             bandName = 'Rrsw_%d' % wl
             bandArray = img[bandName]
             rrsw.append(bandArray[mask == 64])
         rrsw = np.array(rrsw).T
         
-        try:
-            depth = img['depth'][mask == 64]
-        except:
-            depth = np.zeros(rrsw[0].shape) - 1
-        
-        try:
-            botType = img['bottom_type'][mask == 64]
-        except:
-            botType = np.zeros(rrsw[0].shape)
-        albedo = np.zeros(rrsw.shape)
-        uniqBotTypes = np.unique(botType)
-        for ubt in uniqBotTypes:
-            albedo[botType == ubt] = self.albedos[ubt](wavelen) 
-            
-        try:
-            theta = img['sun_zenith'][mask == 64]
-        except:
-            theta = np.zeros(rrsw[0].shape)
+        return rrsw
 
-        return mask, rrsw, depth, albedo, theta
-
-    def process(self, img, wavelen=None, 
-                    start=3,
-                    error=1e-6,
-                    minmax = [[0.01, 15],
-                              [0.01, 15],
-                              [0.01, 15]]):
+    def process(self, img, opts,
+                    wavelen=None,
+                    mask=None,
+                    depth=None,
+                    bottom=None,
+                    theta=None):
         '''Process Nansat object <img> with lm.cpp'''
-        print 'minmax:', minmax
-        wavelen = self.get_wavelengths(img, wavelen)
-        print 'wavelen', wavelen
-        mask, rrsw, albedo, depth, theta = self.get_data_list(img, wavelen)
-        pixes = rrsw.shape[0]
-       
+        # get wavelengths
+        self.wavelen = self.get_wavelengths(img, opts, wavelen)
+        print 'wavelen', self.wavelen
+
+        # assume all pixel are valid if mask is not given
+        if mask is None:
+            mask = np.zeros(img.shape(), 'uint8') + 64
+        plt.imshow(mask);plt.title('mask');plt.colorbar();plt.show()
+
+        # get Rrsw for valid pixels
+        rrsw = self.get_rrsw(img, mask)
+        pixels = rrsw.shape[0]
+
+        # get bathymetry in valid pixels (or assume deep waters)
+        if depth is None:
+            depth = np.zeros(img.shape()) - 10
+        plt.imshow(depth);plt.title('depth');plt.colorbar();plt.show()
+        depth = depth[mask == 64]
+
+        # get albedo for valid pixels (or assume sand bottom)
+        if bottom is None:
+            bottom = np.zeros(img.shape(), 'uint8')
+        plt.imshow(bottom);plt.title('bottom');plt.colorbar();plt.show()
+        albedo = self.get_albedo(bottom[mask == 64])
+
+        # get solar zenith of valid pixels (or assume sun in zenith)
+        if theta is None:
+            theta = np.zeros(img.shape())
+        plt.imshow(theta);plt.title('theta');plt.colorbar();plt.show()
+        theta = theta[mask==64]
+
         # get matrix with HO-model
         abCoef = []
         for i in range(0, 8):
-            abCoef.append(self.homo[i](wavelen))
+            abCoef.append(self.homo[i](self.wavelen))
 
-        # set parameters
-        parameters=[len(wavelen), start, error,
-                    minmax[0][0], minmax[0][1],
-                    minmax[1][0], minmax[1][1],
-                    minmax[2][0], minmax[2][1],]
-        
         # process RRSW spectra with LM
         t0 = time()
         print 'rrsw.shape:', rrsw.shape
 
         # retrieve N concetrations
-        c = lm.get_c(parameters, abCoef, rrsw, albedo, depth, theta, 4*pixels)[1]
+        c = lm.get_c(opts, abCoef, rrsw, albedo, depth, theta, 4*pixels)[1]
         c = np.array(c).reshape(pixels, 4)
         print 'spent: ', time() - t0
 

@@ -10,6 +10,8 @@ from obpg_l2_image import OBPGL2Image
 
 from objectivezoning import ObjectiveZoning
 
+""" Generate maps of zones for planning sampling campaign """
+
 oz = ObjectiveZoning()
 
 iDir = '/files/michi/raw/'

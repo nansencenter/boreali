@@ -17,7 +17,7 @@ img.reproject(d)
 img.write_figure('/data/rrs_412.png', 'Rrs_412', clim='hist', legend=True)
 print img
 
-cImg = b.process_lm(img, [412, 443, 488, 531, 555, 667], start=10)
+cImg = b.process(img, [412, 443, 488, 531, 555, 667], start=10)
 
 plt.imshow(cImg[0, :, :], vmin=0, vmax=5, interpolation='nearest');plt.colorbar();plt.show()
 plt.imshow(cImg[1, :, :], vmin=0, vmax=3, interpolation='nearest');plt.colorbar();plt.show()
