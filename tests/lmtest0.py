@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import lm
+from boreali import lm, Boreali
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,14 +11,14 @@ parameters=[6, 3, 1e-6,
             0.01, 2,
             0.01, 1,
             0.01, 1,]
-#b = Boreali('michigan', 'michigan')
 
 bands = 6
 wavelen = [412, 443, 490, 510, 555, 670]
+b = Boreali('michigan', 'michigan')
 # get matrix with HO-model
-#model = []
-#for i in range(0, 8):
-#    model  .append(b.homo[i](wavelen))
+model = []
+for i in range(0, 8):
+    model.append(b.homo[i](wavelen))
 
 #create albedo interpolators
 albedoString = '''

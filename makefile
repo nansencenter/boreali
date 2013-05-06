@@ -1,15 +1,15 @@
-CFLAGS=-w
+CFLAGS=-w -fPIC
 
 all: _lm.so
 
 _lm.so: 	lm.o lm_wrap.o
-	g++ $(CFLAGS) -shared -o _lm.so lm.o lm_wrap.o -O1 -larmadillo -lcminpack
+	g++ $(CFLAGS) -shared -o _lm.so lm.o lm_wrap.o -L/opt/cminpack/1.3.0/ -O1 -larmadillo -lcminpack
 
 lm.o: 		lm.cpp
-	g++ $(CFLAGS) -c -x c++ lm.cpp
+	g++ $(CFLAGS) -c -x c++ lm.cpp -I/opt/cminpack/1.3.0/
 
 lm_wrap.o: 	lm_wrap.c
-	g++ -c lm_wrap.c -I/usr/include/python2.7/ -I/usr/local/lib/python2.7/dist-packages/numpy/core/include/
+	g++ $(CFLAGS) -c lm_wrap.c -I/usr/include/python2.7/ -I/usr/local/lib/python2.7/dist-packages/numpy/core/include/
 
 clean:
-	rm lm_wrap.c *.o _lm.so *.pyc
+	rm *.o _lm.so *.pyc

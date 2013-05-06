@@ -5,7 +5,7 @@ syntax: glob
 *.o
 *~
 *.pyc
-lm_wrap.*
+lm_wrap.o
 lm.py
 *.png
 *.odp
