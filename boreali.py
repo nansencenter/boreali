@@ -26,11 +26,12 @@ class Boreali():
                         'variables': ['lmchl', 'lmtsm', 'lmdoc', 'lmmse'],
                         },
             }
-    def __init__(self, zone='ladoga', model='ladoga'):
+    def __init__(self, zone='ladoga', model='ladoga', wavelen=[412, 443, 490, 510, 555, 670]):
         '''Set up parameters'''
         self.z = self.zones[zone]
         self.homo = self.read_ho_models(self.z['ho_model_file'], model)
         self.set_albedos()
+        self.wavelen = wavelen
     
     def set_albedos(self):
         '''Set spectra of albedos'''
@@ -59,6 +60,14 @@ class Boreali():
         
         self.albedos = albedos
         self.albedoNames = albedoNames
+
+    def get_homodel(self):
+        '''Get matrix with hydro-optical model'''
+        abCoef = []
+        for i in range(0, 8):
+            abCoef.append(self.homo[i](self.wavelen))
+        
+        return abCoef
 
     def get_albedo(self, bottom):
         '''Get array with albedos for each valid pixel'''
@@ -147,14 +156,13 @@ class Boreali():
         return rrsw
 
     def process(self, img, opts,
-                    wavelen=None,
                     mask=None,
                     depth=None,
                     bottom=None,
                     theta=None):
         '''Process Nansat object <img> with lm.cpp'''
         # get wavelengths
-        self.wavelen = self.get_wavelengths(img, opts, wavelen)
+        self.wavelen = self.get_wavelengths(img, opts, self.wavelen)
         print 'wavelen', self.wavelen
 
         # assume all pixel are valid if mask is not given
@@ -184,10 +192,7 @@ class Boreali():
         plt.imshow(theta);plt.title('theta');plt.colorbar();plt.show()
         theta = theta[mask==64]
 
-        # get matrix with HO-model
-        abCoef = []
-        for i in range(0, 8):
-            abCoef.append(self.homo[i](self.wavelen))
+        abCoef = self.get_homodel(self.wavelen)
 
         # process RRSW spectra with LM
         t0 = time()
