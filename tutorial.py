@@ -39,7 +39,7 @@ parameters=[len(wavelen), 3, 1e-6,
             0.01, 1,]
 
 # create Boreali object
-b = Boreali('michigan', 'michigan', wavelen)
+b = Boreali('michigan', wavelen)
 # get HO-model from boreali
 model = b.get_homodel()
 
