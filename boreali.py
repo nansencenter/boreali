@@ -167,8 +167,13 @@ class Boreali():
 
         # assume all pixel are valid if mask is not given
         if mask is None:
+            try:
+                mask = img['mask']
+            except:
+                mask = None
+        if mask is None:
             mask = np.zeros(img.shape(), 'uint8') + 64
-        plt.imshow(mask);plt.title('mask');plt.colorbar();plt.show()
+        #plt.imshow(mask);plt.title('mask');plt.colorbar();plt.show()
 
         # get Rrsw for valid pixels
         rrsw = self.get_rrsw(img, mask)
@@ -177,22 +182,22 @@ class Boreali():
         # get bathymetry in valid pixels (or assume deep waters)
         if depth is None:
             depth = np.zeros(img.shape()) - 10
-        plt.imshow(depth);plt.title('depth');plt.colorbar();plt.show()
+        #plt.imshow(depth);plt.title('depth');plt.colorbar();plt.show()
         depth = depth[mask == 64]
 
         # get albedo for valid pixels (or assume sand bottom)
         if bottom is None:
             bottom = np.zeros(img.shape(), 'uint8')
-        plt.imshow(bottom);plt.title('bottom');plt.colorbar();plt.show()
+        #plt.imshow(bottom);plt.title('bottom');plt.colorbar();plt.show()
         albedo = self.get_albedo(bottom[mask == 64])
 
         # get solar zenith of valid pixels (or assume sun in zenith)
         if theta is None:
             theta = np.zeros(img.shape())
-        plt.imshow(theta);plt.title('theta');plt.colorbar();plt.show()
+        #plt.imshow(theta);plt.title('theta');plt.colorbar();plt.show()
         theta = theta[mask==64]
 
-        abCoef = self.get_homodel(self.wavelen)
+        abCoef = self.get_homodel()
 
         # process RRSW spectra with LM
         t0 = time()
