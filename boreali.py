@@ -171,22 +171,39 @@ class Boreali():
                     break
         return wavelengths
     
-    def get_rrsw(self, img, mask=None):
+    def get_rrsw(self, img, flexible):
         '''Get array with RRSW for valid pixels and mask of valid pixels'''
+        wlNames = ['Rrsw_%d' % wl for wl in self.wavelen]
+        # get names of bands with Rrsw
+        bands = img.bands()
         rrsw = []
-        for wl in self.wavelen:
-            bandName = 'Rrsw_%d' % wl
-            bandArray = img[bandName]
-            rrsw.append(bandArray[mask == 64])
-        rrsw = np.array(rrsw).T
+        for bn in bands:
+            bandName = bands[bn]['name']
+            for wlName in wlNames: 
+                if bandName == wlName or (flexible and wlName in bandName):
+                    bandArray = img[bandName]
+                    rrsw.append(bandArray)
+
+        rrsw = np.array(rrsw)
+        rrsw = rrsw.reshape(rrsw.shape[0], rrsw.shape[1] * rrsw.shape[2])
         
         return rrsw
+
+    def filter(self, rrsw, mask, negative=True):
+        '''Remove invalid Rrsw spectra using mask and custom filters'''
+        # apply 'negative values' filter to water pixels
+        if negative:
+            negativePixels = rrsw.min(axis=0) < 0
+            mask.flat[negativePixels * (mask.flat == 64)] = 4
+        
+        return rrsw[:, mask.flat == 64], mask
 
     def process(self, img, opts,
                     mask=None,
                     depth=None,
                     bottom=None,
-                    theta=None):
+                    theta=None,
+                    flexible=True):
         '''Process Nansat object <img> with lm.cpp'''
         # get wavelengths
         self.wavelen = self.get_wavelengths(img, opts, self.wavelen)
@@ -202,8 +219,14 @@ class Boreali():
             mask = np.zeros(img.shape(), 'uint8') + 64
         #plt.imshow(mask);plt.title('mask');plt.colorbar();plt.show()
 
-        # get Rrsw for valid pixels
-        rrsw = self.get_rrsw(img, mask)
+        # get Rrsw for all pixels [bands x pixels]
+        rrsw = self.get_rrsw(img, flexible)
+        
+        # get Rrsw for valid pixels [bands x pixels] and new mask
+        rrsw, mask = self.filter(rrsw, mask)
+        
+        # transpose Rrsw and get number of pixels
+        rrsw = rrsw.T
         pixels = rrsw.shape[0]
 
         # get bathymetry in valid pixels (or assume deep waters)
@@ -235,10 +258,10 @@ class Boreali():
         c = np.array(c).reshape(pixels, 4)
         print 'spent: ', time() - t0
 
-        cImg = np.zeros((4, img.shape()[0], img.shape()[1]))
+        cImg = np.zeros((4, img.shape()[0], img.shape()[1])) + np.nan
         for i in range(0, 4):
-            cArray = np.zeros(img.shape())
+            cArray = np.zeros(img.shape()) + np.nan
             cArray[mask == 64] = c[:, i]
             cImg[i, :, :] = cArray
         
-        return cImg
+        return cImg, mask
