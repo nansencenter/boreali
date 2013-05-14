@@ -14,7 +14,7 @@ from nansat import Domain, Nansat, Figure
 
 class OBPGL2Image(Nansat):
 
-    def l2c_mask(self, cloudBits, landBits=[2], tmpProdName='latitude', invalidTmp=-999):
+    def l2c_mask(self, cloudBits, landBits=[2], tmpProdName='latitude', invalidTmp=-999, flagsName='flags'):
         '''Create l2c_flags:
         Flag coding:
         1 - cloud   (value = 1)
@@ -62,7 +62,7 @@ class OBPGL2Image(Nansat):
         except:
             self.logger.error('Unable to modify WorkingDataType in VRT!')
         
-        l2_flags = self['flags']
+        l2_flags = self[flagsName]
         
         try:
             self._modify_warpedVRT2('GDALWarpOptions/WorkingDataType', 'Float32')
