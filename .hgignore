@@ -13,3 +13,4 @@ lm.py
 *.kml
 *.kmz
 *.jpg
+*.nc
