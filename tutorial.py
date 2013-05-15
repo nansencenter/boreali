@@ -67,7 +67,7 @@ c = lm.get_c(parameters, model, [r], [albedo], [h], [theta], 4)[1]
 print 'chl=%5.2f, tsm=%5.2f, doc=%5.2f, rmse=%5.2f' % tuple(c)
 
 # open test image (subimage of lake michigan)
-n = Nansat('test2.tif')
+n = Nansat('test.tif')
 
 # make a subset from input image
 d = Domain(4326, '-lle -88 42.5 -87.33 42.75 -ts 200 100')

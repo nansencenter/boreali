@@ -10,9 +10,9 @@ from scipy import interpolate
 import lm
 
 class Boreali():
-    '''Perform processing of optical image with the BOREALI boreali algorithm'''
+    '''Perform processing of optical image with the BOREALI algorithm'''
     def __init__(self, model='ladoga', wavelen=[412, 443, 490, 510, 555, 670]):
-        '''Set up retrieval options
+        '''Generate Boreali and Set up retrieval options
         
         Parameters:
         -----------
@@ -29,7 +29,19 @@ class Boreali():
         self.wavelen = wavelen
     
     def read_ho_models(self, hoFileName='', iModelName='ladoga'):
-        '''Read file with HO-models and prepare interpolators'''
+        '''Read file with HO-models and prepare interpolators
+        
+        Parameters:
+        -----------
+            hoFileName : string
+                name of the text file with hydrooptical model
+            iModelName : string
+                name of the ho-model in the file
+        Returns:
+        --------
+            interpolators for each a/bb component. Eah interpolator can
+            be applied to retrieve a/bb for any wavelength
+            '''
         
         # READ HO_MODELS FROM FILE
         selfDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))        
@@ -82,6 +94,7 @@ class Boreali():
         which relate wavelengths and albed is created for each bottom 
          
         Modifies:
+        ---------
         self.albedos : list of interpolation functions for each albedo
         self.albedoName : names of albedos
         '''
@@ -139,10 +152,12 @@ class Boreali():
         using the current wavelengths and input index of bottom type   
         
         Parameters:
+        -----------
         bottom : numpy 1D integer matrix
             array with indeces of bottom types
             
-        Returns :
+        Returns:
+        ---------
         Numpy 2d matrix: matrix with albedo spectra for each input index
         '''
         
@@ -155,7 +170,26 @@ class Boreali():
         return albedo
 
     def get_wavelengths(self, img, opts, wavelen=None):
-        '''Return list of wavelengths from the available bands in img'''
+        '''Return list of wavelengths from the available bands in img
+        
+        Open input Nansat image and loop through band names. Find for
+        which wavelengths bands exist.
+        
+        Parameters:
+        -----------
+        img : Nansat
+            input Nansat object with bands with names 'Rrsw_NNN'
+        opts : list with options
+            opts[0] should contain number of bands to read from file
+        wavelen : list of integers
+            list of wavelengths (in nm) to find in the input file.
+            If empty - all Rrsw_ bands are read
+
+        Returns:
+        --------
+        list of int, wavelenghs available in the file
+        
+        '''
         imgBands = img.bands()
         wavelengths = []
         
@@ -173,7 +207,23 @@ class Boreali():
         return wavelengths
     
     def get_rrsw(self, img, flexible):
-        '''Get array with RRSW for valid pixels and mask of valid pixels'''
+        '''Get spectra of Rrsw from input image
+        
+        Get bands with Rrsw from input image and reshape into 2D array
+        with Rrsw spectra (bands x pixels)
+        
+        Parameters:
+        -----------
+        img : Nansat
+            input Nansat image
+        flexible : boolean
+            if True also bands with name Rrsw_NNNZZZ are read where
+            NNN is wavelenth and ZZZ are any symbols
+
+        Returns:
+        --------
+        2D Numpy array with Rrsw spectra (bands x pixels)
+        '''
         wlNames = ['Rrsw_%d' % wl for wl in self.wavelen]
         # get names of bands with Rrsw
         bands = img.bands()
@@ -191,7 +241,22 @@ class Boreali():
         return rrsw
 
     def filter(self, rrsw, mask, negative=True):
-        '''Remove invalid Rrsw spectra using mask and custom filters'''
+        '''Remove invalid Rrsw spectra using mask and custom filters
+        
+        Search for negative values in Rrsw and if found mask this pixel
+        with value=4 in the mask
+        
+        Parameters:
+        -----------
+            rrsw : 2D Numpy array with Rrsw spectra
+            mask : 2D Numpy array with L2 Nansat mask
+            negative : boolean, apply negative Rrsw filter?
+
+        Returns:
+        --------
+            rrsw : 2D Numpy array with valid Rrsw spectra only
+            mask : 2D Numpy array with updated L2 mask (Boreali mask)
+        '''
         # apply 'negative values' filter to water pixels
         if negative:
             negativePixels = rrsw.min(axis=0) < 0
