@@ -67,9 +67,14 @@ c = lm.get_c(parameters, model, [r], [albedo], [h], [theta], 4)[1]
 print 'chl=%5.2f, tsm=%5.2f, doc=%5.2f, rmse=%5.2f' % tuple(c)
 
 # open test image (subimage of lake michigan)
-n = Nansat('test.tif')
+n = Nansat('test2.tif')
+
+# make a subset from input image
+d = Domain(4326, '-lle -88 42.5 -87.33 42.75 -ts 200 100')
+n.reproject(d)
+
 # use Boreali object to process the input image, keep the result in cpa
-cpa = b.process(n, parameters)
+cpa, mask = b.process(n, parameters, threads=2)
 
 # create new Nansat object to store the results of retrieval
 nCPA = Nansat(domain=n)
@@ -78,15 +83,15 @@ nCPA.add_band(array=cpa[0], parameters={'name': 'chl', 'long_name': 'Chlorophyl-
 nCPA.add_band(array=cpa[1], parameters={'name': 'tsm', 'long_name': 'Total suspended matter', 'units': 'g m-3'})
 nCPA.add_band(array=cpa[2], parameters={'name': 'doc', 'long_name': 'Dissolved organic carbon', 'units': 'gC m-3'})
 nCPA.add_band(array=cpa[3], parameters={'name': 'mse', 'long_name': 'Root Mean Square Error', 'units': 'sr-1'})
-# save as GeoTIF file
-nCPA.export('test_cpa.tif', driver='GTiff')
+nCPA.add_band(array=mask, parameters={'name': 'mask', 'long_name': 'L2 Boreali mask', 'units': '1'})
 
-# get watermask for plotting
-wm = n.watermask()[1]
+# save as GeoTIF file
+nCPA.export('test_cpa.nc')
 
 # generate PNG files with CPA spatial distribution and with RGB
-nCPA.write_figure('test_chl.png', 'chl', clim=[0, 0.5], legend=True, LEGEND_HEIGHT=0.5, NAME_LOCATION_Y=0, mask_array=wm, mask_lut={2:[128,128,128]})
-nCPA.write_figure('test_tsm.png', 'tsm', clim=[0, 1], legend=True, LEGEND_HEIGHT=0.5, NAME_LOCATION_Y=0, mask_array=wm, mask_lut={2:[128,128,128]})
-nCPA.write_figure('test_doc.png', 'doc', clim=[0, .5], legend=True, LEGEND_HEIGHT=0.5, NAME_LOCATION_Y=0, mask_array=wm, mask_lut={2:[128,128,128]})
-nCPA.write_figure('test_mse.png', 'mse', clim=[1e-5, 1e-2], logarithm=True, LEGEND_HEIGHT=0.5, NAME_LOCATION_Y=0, legend=True, mask_array=wm, mask_lut={2:[128,128,128]})
-n.write_figure('test_rgb.png', [9, 5, 1], clim=[[0, 0, 0], [0.006, 0.04, 0.024]], mask_array=wm, mask_lut={2:[128,128,128]})
+figParams = {'legend': True, 'LEGEND_HEIGHT': 0.5, 'NAME_LOCATION_Y': 0, 'mask_array': mask, 'mask_lut': {1: [255, 255, 255], 2:[128,128,128], 4:[200,200,255]}}
+nCPA.write_figure('test_chl.png', 'chl', clim=[0, 0.5], **figParams)
+nCPA.write_figure('test_tsm.png', 'tsm', clim=[0, 1], **figParams)
+nCPA.write_figure('test_doc.png', 'doc', clim=[0, .5], **figParams)
+nCPA.write_figure('test_mse.png', 'mse', clim=[1e-5, 1e-2], logarithm=True, **figParams)
+n.write_figure('test_rgb.png', [9, 5, 1], clim=[[0, 0, 0], [0.006, 0.04, 0.024]], mask_array=mask, mask_lut={2:[128,128,128]})
