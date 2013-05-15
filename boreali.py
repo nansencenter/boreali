@@ -1,6 +1,7 @@
 import os
 from time import time 
 import inspect
+from multiprocessing import Process, Array
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -197,14 +198,90 @@ class Boreali():
             mask.flat[negativePixels * (mask.flat == 64)] = 4
         
         return rrsw[:, mask.flat == 64], mask
+    
+    def get_c(self, opts, abCoef,
+                    rrsw, albedo, depth, theta,
+                    values):
+        '''Retrieve CPA concentrations from Rrsw spectra using LM-optimization
+        
+        Wraper around lm.get_c() to be used in multi-processing
+        Parameters:
+        -----------
+        opts : list with 9 values
+            number of bands; number of starting vectors; min. RMSE;
+            min/max of each CPA to retreive
+        abCoef :  Numpy 2D matrix
+            Values of absorption and bacscattering og water and CPA for
+            each wavelength
+        rrsw : numpy 2D array
+            Rrsw spectra
+        albedo : numpy 2D array
+            bottom albedo spectra 
+        depth : Numpy 1D array
+            Bathymetry of each pixel. If negative - shallow water
+            retrieval is not applied
+        theta : Numpy 1D array
+            Sun zenith angle in each pixel.
+        values : list
+            container of output results
+        '''
+        valuesLen = len(values)
+        c = lm.get_c(opts, abCoef, rrsw, albedo, depth, theta, valuesLen)[1]
+        values[:] = c
+        
 
     def process(self, img, opts,
                     mask=None,
                     depth=None,
                     bottom=None,
                     theta=None,
-                    flexible=True):
-        '''Process Nansat object <img> with lm.cpp'''
+                    flexible=True,
+                    threads=1):
+        '''Retrieve CPA concentrations from input Nansat image
+        
+        Read Rrsw values from bands of input Nansat object,
+        filter only valid pixels, apply Levenberg-Marquardt optimization
+        for retrieval of CPA concentrations from Rrsw spectra
+        
+        Parameters:
+        -----------
+        img : Nansat
+            input image with Rrsw bands. The bands should have name 
+            'Rrsw_NNN' where NNN is an integer value of wavelength in nm
+            NNN should match the wavelengths from the self.wavelen 
+            created when initializing Boreali object
+        opts : list with 9 values
+            number of bands; number of starting vectors; min. RMSE;
+            min/max of each CPA to retreive
+        mask : Numpy 2D array (same shape as img)
+            Nansat L2 mask with values 0, 1, 2, 64 meaning:
+            out_of_swath, cloud, land, valid_pixel
+            If None, all pixels are considered valid
+        depth : Numpy 2D array (same shape as img)
+            Bathymetry of the ROI. If none - shallow water retrieval is not applied
+        bottom : Numpy 2D array (same shape as img)
+            Type of bottom cover. Matrix with integer values of index of
+            bottom type. See Boreali.get_albedo()
+            If None, sand bottom is assumed
+        theta : Numpy 2D array (same shape as img)
+            Sun zenith angle in each pixel. If None sun is in nadir
+        flexible : Boolean
+            Allow the name of the band to be 'Rrsw_NNNZZZZ' where ZZZ
+            is any number. Required for ability to process NC-files
+            previously saved by Nansat
+        threads : int
+            Number of subprocesses
+        
+        Returns:
+        --------
+            cpa : Numpy 3D array (4 x (same shape as img))
+                Matrix with CPA and RMSE. CPA are the agents from the
+                hydro-opticalmodel. RMSE is the retrieval error (diff
+                between the measured and reconstructed spectra)
+            mask : Numpy 2D array (same shape as img)
+                Boreali L2 Mask. In addition to Nansat mask value 4
+                designates negative Rrsw values
+        '''
         # get wavelengths
         self.wavelen = self.get_wavelengths(img, opts, self.wavelen)
         print 'wavelen', self.wavelen
@@ -249,15 +326,56 @@ class Boreali():
 
         abCoef = self.get_homodel()
 
-        # process RRSW spectra with LM
-        t0 = time()
-        print 'rrsw.shape:', rrsw.shape
+        # prepare for multiprocessing: create last and first indices for
+        # dividing input matrix with rrsw into sub-matrices
+        thIndex = []
+        thi0 = 0
+        for thn in range(threads):
+            thIndex.append([thi0, thi0+pixels/threads])
+            thi0 += pixels/threads
+        thIndex[-1][-1] = pixels
 
-        # retrieve N concetrations
-        c = lm.get_c(opts, abCoef, rrsw, albedo, depth, theta, 4*pixels)[1]
+        t0 = time()
+        print 'Pixels x bands to process: ', rrsw.shape
+
+        # create and launch subprocesss (collect in procs)
+        # keep results in cVals
+        procs = []
+        cVals = []
+        for thn in range(threads):
+            # select sub-matrix for this subprocess
+            procPixels = thIndex[thn][1] - thIndex[thn][0]
+            # allocate memory to store results of rerieval from submatrix
+            cVals.append(Array('d', range(procPixels*4)))
+            # subset rrsw, albedo, depth and theta
+            r = rrsw[thIndex[thn][0]:thIndex[thn][1], :]
+            a = albedo[thIndex[thn][0]:thIndex[thn][1], :]
+            h = depth[thIndex[thn][0]:thIndex[thn][1]]
+            t = theta[thIndex[thn][0]:thIndex[thn][1]]
+            # create new subprocess args are:
+            # name of func to retrieve CPA and
+            # arguments for tht func
+            procs.append(Process(target=self.get_c,
+                                        args=(opts, abCoef,
+                                                r, a, h, t,
+                                                cVals[thn])))
+            # launch sub-process
+            procs[thn].start()
+
+        # wait for subprocess to finish
+        for thn in range(threads):
+            procs[thn].join()
+
+        # collect retrieval results into one list
+        c = []
+        for thn in range(threads):
+            c += cVals[thn]
+            
+        # convert list with retrievals into 2d matrix with column for each CPA
         c = np.array(c).reshape(pixels, 4)
         print 'spent: ', time() - t0
 
+        # reshape 2D-CPA matix into 3D with 2D images of CPA
         cImg = np.zeros((4, img.shape()[0], img.shape()[1])) + np.nan
         for i in range(0, 4):
             cArray = np.zeros(img.shape()) + np.nan
