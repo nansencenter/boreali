@@ -453,7 +453,6 @@ int startingCPA(double parameters[9], double * startC){
                 startC[k * 3 + 0] = c0;
                 startC[k * 3 + 1] = c1;
                 startC[k * 3 + 2] = c2;
-                printf("start: %d %f %f %f \n", k, startC[k * 3 + 0], startC[k * 3 + 1], startC[k * 3 + 2]);
                 k ++;
                 c2 += dc2;
             }
@@ -624,6 +623,8 @@ extern int get_c(double parameters[9],
     //create starting CPA
     double * startC = new double (3 * parameters[1]);
     int startCN = startingCPA(parameters, startC);
+    for (k = 0; k < startCN; k ++)
+        printf("start: %d %f %f %f \n", k, startC[k * 3 + 0], startC[k * 3 + 1], startC[k * 3 + 2]);
 
     //prepare for optimization with CMINPACK
     real x[3], fvec[10], fjac[30], tol, wa[300], fnorm;
