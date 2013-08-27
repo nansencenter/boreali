@@ -28,6 +28,8 @@ Hydrooptics :: Hydrooptics(int inBands, double * inModel){
     set_model(inModel);
     // albedo
     al = new double [bands];
+    // measured reflectance
+    s = new double [bands];
 };
 
 /*
@@ -59,7 +61,8 @@ Hydrooptics :: ~Hydrooptics(){
     delete [] bbm;
     delete [] bm;
     delete [] al;
-    
+    delete [] s;
+
 }
 
 int Hydrooptics :: set_model(double * model){
@@ -96,11 +99,17 @@ int Hydrooptics :: set_model(double * model){
     return 0;
 }
 
-int Hydrooptics :: set_params(double * inAL, double inH, double inTheta){
+int Hydrooptics :: set_params(double * inS, double * inAL, double inH, double inTheta){
     //set hydro-optical conditions
+    int bn;
     
-    // albedo
-    for (int bn = 0; bn < bands; bn ++) al[bn] = inAL[bn];
+    for (bn = 0; bn < bands; bn ++){
+        //measured reflectance
+        s[bn] = inS[bn];
+        // albedo
+        al[bn] = inAL[bn];
+    }
+
     // depth
     h = inH;
     // sun zenith
@@ -433,7 +442,8 @@ int startingCPA(double parameters[9], double * startC){
     int ci0, ci1, ci2;
     double c0, c1, c2, dc0, dc1, dc2;
     double starts = parameters[1];
-    int k, fullSize = starts * starts * starts;
+    int k;
+    int fullSize = starts * starts * starts;
     
     double min0 = parameters[3], max0 = parameters[4];
     double min1 = parameters[5], max1 = parameters[6];
@@ -533,7 +543,7 @@ extern int get_rrsw(double parameters[9],
     //init HO-object
     Hydrooptics ho(outR_n0, model);
     //set ho-conditions
-    ho.set_params(albedo, h, theta);
+    ho.set_params(albedo, albedo, h, theta);
 
     for (bn = 0; bn < outR_n0; bn ++){
         //use HO-object for estimation of Rrsw
@@ -609,22 +619,18 @@ extern int get_c(double parameters[9],
          double *theta, int theta_rows,
          double *outC, int outC_length){
 
-    int bn, i, j, k, pi, bands = inR_cols, pixels = inR_rows;
+    int bn, i, j, k, bands = inR_cols, pixels = inR_rows;
     printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
     
     //result of optimization
     double xBest[4];
 
     //init HO-object
-    //Hydrooptics(int inBands, double * inModel, double * inAL, double inH, double inTheta);
     Hydrooptics ho(bands, model);
     
-    //ho.set_params(albedo, h, theta);
-    //create starting CPA
-    double * startC = new double (3 * parameters[1]);
+    //create starting CPA for max 10x10x10 input vectors
+    double startC[3000];
     int startCN = startingCPA(parameters, startC);
-    for (k = 0; k < startCN; k ++)
-        printf("start: %d %f %f %f \n", k, startC[k * 3 + 0], startC[k * 3 + 1], startC[k * 3 + 2]);
 
     //prepare for optimization with CMINPACK
     real x[3], fvec[10], fjac[30], tol, wa[300], fnorm;
@@ -636,14 +642,8 @@ extern int get_c(double parameters[9],
     for (i = 0; i < pixels; i ++){
 
         //set measured Rrsw, albedo, depth and solar zenith in the HO-object
-        ho.set_params(albedo + j + i*bands, h[i], theta[i]);
-        ho.s = (inR + j + i*bands);
+        ho.set_params(inR + i*bands, albedo + i*bands, h[i], theta[i]);
         
-        for (bn = 0; bn < ho.bands; bn ++){
-            printf("ho.s[bn: %f\n", ho.s[bn]);
-            printf("ho.al[bn: %f\n", ho.al[bn]);
-        }
-
         //erase xBest
         for (j = 0; j < 4; j ++)
             xBest[j] = 100;
@@ -687,6 +687,7 @@ extern int get_c(double parameters[9],
     }
 
     printf("OK!\n");
+
     return 0;
 };
 

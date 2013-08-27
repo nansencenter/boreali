@@ -33,7 +33,7 @@ h = -10 # boreali will not use bottom correction if h < 0
 theta = 0 # sun in zenith
 
 # set LM parameters
-parameters=[len(wavelen), 3, 1e-6, 
+parameters=[len(wavelen), 3, 1e-7, 
             0.01, 2,
             0.01, 1,
             0.01, 1,]
@@ -48,7 +48,7 @@ chls = [0.01, 0.05, 0.1, 0.5, 1, 5]
 legendVals = []
 for chl in chls:
     # call lm.get_rrsw to calculate Rrsw from input concentrations
-    r = lm.get_rrsw(parameters, model, [chl, 0.01, 0.01], albedo, h, theta, len(wavelen))[1]
+    r = lm.get_rrsw(parameters, model, [chl, 0.2, 0.01], albedo, h, theta, len(wavelen))[1]
     # plot R vs. wavelength
     plt.plot(wavelen, r, '.-')
     # add chl concentration to legends

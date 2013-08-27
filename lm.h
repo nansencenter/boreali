@@ -81,7 +81,7 @@ class Hydrooptics {
     int set_model(double * model);
     
     //set hydo-optical conditions
-    int set_params(double * inAL, double inH, double inTheta);
+    int set_params(double * inS, double * inAL, double inH, double inTheta);
     
     //create matrix [1 c0 c1 c2]
     //mat cOne(mat c) const;
