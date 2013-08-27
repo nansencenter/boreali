@@ -7,7 +7,7 @@
 
 //include Armadillo: C++ linear algebra library 
 //http://arma.sourceforge.net/
-#include <armadillo>
+//#include <armadillo>
 
 //include CMINPACK for Levenberg-Marquardt optimization
 //http://devernay.free.fr/hacks/cminpack/index.html
@@ -15,7 +15,7 @@
 #define real __cminpack_real__
 
 using namespace std;
-using namespace arma;
+//using namespace arma;
 
 class Hydrooptics {
     /* Class contais definitions of all hydrooptial equations for 
@@ -49,10 +49,18 @@ class Hydrooptics {
     static const double G2 = 40;    //peak width
     static const double L0 = -0.06; //line 0
 
-    mat m;
-    mat s;
-    mat al;
-    mat lambda;
+    int bands;
+    
+    double * aaw;
+    double * bbw;
+    double * bw;
+    double * aam;
+    double * bbm;
+    double * bm;
+
+    double * s;
+    double * al;
+
     double h;
     double theta;
     double qf;
@@ -60,23 +68,33 @@ class Hydrooptics {
     
     //Constructor:
     //Set model, albedo, depth, solar zenith
-    Hydrooptics(mat inM, mat inAL, double h, double theta);
+    Hydrooptics(int inBands, double * inModel);
 
+    //Destructor
+    //Clean memory from model
+    ~Hydrooptics();
+    
     //Set       model,   depth,    solar zenith  wavelengths, 
-    Hydrooptics(mat inM, double h, double theta, mat inLambda);
-
+    //Hydrooptics(mat inM, double h, double theta, mat inLambda);
+    
+    //set hydro-optical model in the object
+    int set_model(double * model);
+    
+    //set hydo-optical conditions
+    int set_params(double * inAL, double inH, double inTheta);
+    
     //create matrix [1 c0 c1 c2]
-    mat cOne(mat c) const;
+    //mat cOne(mat c) const;
 
     //albedo approximation
-    mat albedo(double al1, double al2) const;
+    //mat albedo(double al1, double al2) const;
 
     //caluclate Subsurface remote sensing refectance (Rrsw) from given C
     //for deep waters
     //Other parameters (model, albedo, depth, sola zenith) are defined
     //in the object (at initialization)
     //Returns vector for the entrie spectrum
-    mat rrsw (mat c) const;
+    double rrsw (double * c, int bn) const;
 
     //caluclate Subsurface remote sensing refectance (Rrsw) from given C
     //and given ALR
@@ -84,27 +102,27 @@ class Hydrooptics {
     //Other parameters (model, albedo, depth, sola zenith) are defined
     //in the object (at initialization)
     //Returns vector for the entrie spectrum
-    mat rrsw (mat c, double al1, double al2) const;
+    //double rrsw (mat c, double al1, double al2) const;
 
     //Calcualte cost function: difference between measured and
     //reconstructed R for given C
     //Returns vector for the entrie spectrum
-    mat rs (mat c) const;    
+    double rs (double * c, int bn) const;
 
     //Calcualte cost function: difference between measured and
     //reconstructed R for given C and ALR
     //Returns vector for the entrie spectrum
-    mat rs (mat c, double al1, double  al2) const;    
+    //mat rs (mat c, double al1, double  al2) const;    
 
     //Calculate Jacobian of the cost function:
     //partial derivative of the cost function by each concentration
     //Returns vector for the entrie spectrum
-    mat jacobian(mat c) const;
+    double jacobian(double * c, int bn, int vn) const;
 
     //Calculate Jacobian of the cost function:
     //partial derivative of the cost function by each concentration and albedo
     //Returns vector for the entrie spectrum
-    mat jacobian(mat c, double al1, double al2) const;
+    //mat jacobian(mat c, double al1, double al2) const;
     
     //Calculate Jacobian of the cost function for deep waters
     //Returns single value at one wavelength
@@ -156,11 +174,13 @@ class Hydrooptics {
 
 };
 
+int startingCPA(double * parameters, double * startC);
+
 //Interface for the LM-optimization library
 int fcn(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
 	 int ldfjac, int iflag);
 
 
 //Interface for the LM-optimization library
-int fcn_al(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
-	 int ldfjac, int iflag);
+//int fcn_al(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
+//	 int ldfjac, int iflag);

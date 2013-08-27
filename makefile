@@ -3,7 +3,7 @@ CFLAGS=-w -fPIC
 all: _lm.so
 
 _lm.so: 	lm.o lm_wrap.o
-	g++ $(CFLAGS) -shared -o _lm.so lm.o lm_wrap.o -L/opt/cminpack/1.3.0/ -O1 -larmadillo -lcminpack
+	g++ $(CFLAGS) -shared -o _lm.so lm.o lm_wrap.o -L/opt/cminpack/1.3.0/ -O1 -lcminpack
 
 lm.o: 		lm.cpp
 	g++ $(CFLAGS) -c -x c++ lm.cpp -I/opt/cminpack/1.3.0/

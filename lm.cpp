@@ -7,7 +7,7 @@
 
 //include Armadillo: C++ linear algebra library 
 //http://arma.sourceforge.net/
-#include <armadillo>
+//#include <armadillo>
 
 //include CMINPACK for Levenberg-Marquardt optimization
 //http://devernay.free.fr/hacks/cminpack/index.html
@@ -16,29 +16,21 @@
 #define real long double
 
 using namespace std;
-using namespace arma;
+//using namespace arma;
 
 #include "lm.h"
 
-Hydrooptics :: Hydrooptics(mat inM, mat inAL, double inH, double inTheta){
-    m = inM;
-    al = inAL;
-    h = inH;
-    theta = inTheta * PI / 180.;
-    //inwater sun zenith
-    double theta1 = asin(sin(theta) / NW);
-    //inwater cos(sun zenith)
-    double mu01 = cos(theta1);
-    //internal surface reflectivity
-    double rhoInt = 0.271 + 0.249 * mu01;
-    //Calculate Q/f factor (from theta, from the object)
-    //Q/f - conversion factor: Rrsw = R / Q/f
-	qf = PI / (1 - rhoInt);
-    //cos(sun zenith)
-    mu0 = cos(theta);
-
+Hydrooptics :: Hydrooptics(int inBands, double * inModel){
+    // set number of bands and model.
+    // number of bands
+    bands = inBands;
+    // hydro-optical model
+    set_model(inModel);
+    // albedo
+    al = new double [bands];
 };
 
+/*
 Hydrooptics :: Hydrooptics(mat inM, double inH, double inTheta, mat inLambda){
     m = inM;
     lambda = inLambda;
@@ -57,15 +49,80 @@ Hydrooptics :: Hydrooptics(mat inM, double inH, double inTheta, mat inLambda){
     mu0 = cos(theta);
 
 };
+*/
 
-mat Hydrooptics :: cOne(mat c) const{
-    mat cc = ones<mat>(1, c.n_cols+1);
-    cc.cols(1, c.n_cols) = c;
-
-    return cc;
-};
+Hydrooptics :: ~Hydrooptics(){
+    delete [] aaw;
+    delete [] bbw;
+    delete [] bw;
+    delete [] aam;
+    delete [] bbm;
+    delete [] bm;
+    delete [] al;
     
+}
+
+int Hydrooptics :: set_model(double * model){
+    // Copy absorption and backscattering coefficients from input model
+    // into the object
+
+    int bn;
+    
+    aaw = new double [bands];
+    bbw = new double [bands];
+    bw  = new double [bands];
+    aam = new double [bands * 3];
+    bbm = new double [bands * 3];
+    bm  = new double [bands * 3];
+    
+    for (bn = 0; bn < bands; bn ++){
+        aaw[bn] = model[bn + 0 * bands];
+        aam[bn + 0 * bands] = model[bn + 1 * bands];
+        aam[bn + 1 * bands] = model[bn + 2 * bands];
+        aam[bn + 2 * bands] = model[bn + 3 * bands];
+        bbw[bn] = model[bn + 4 * bands];
+        bw[bn]  = model[bn + 4 * bands] / B_WAT;
+        bbm[bn + 0 * bands] = model[bn + 5 * bands];
+        bbm[bn + 1 * bands] = model[bn + 6 * bands];
+        bbm[bn + 2 * bands] = model[bn + 7 * bands];
+        // TODO:
+        // That has to be fixed later with variable backscattering
+        // efficiency
+        bm[bn + 0 * bands] = model[bn + 5 * bands] / B_CHL;
+        bm[bn + 1 * bands] = model[bn + 6 * bands] / B_TSM;
+        bm[bn + 1 * bands] = 0;
+    }
+        
+    return 0;
+}
+
+int Hydrooptics :: set_params(double * inAL, double inH, double inTheta){
+    //set hydro-optical conditions
+    
+    // albedo
+    for (int bn = 0; bn < bands; bn ++) al[bn] = inAL[bn];
+    // depth
+    h = inH;
+    // sun zenith
+    theta = inTheta * PI / 180.;
+    //inwater sun zenith
+    double theta1 = asin(sin(theta) / NW);
+    //inwater cos(sun zenith)
+    double mu01 = cos(theta1);
+    //internal surface reflectivity
+    double rhoInt = 0.271 + 0.249 * mu01;
+    //Calculate Q/f factor (from theta, from the object)
+    //Q/f - conversion factor: Rrsw = R / Q/f
+	qf = PI / (1 - rhoInt);
+    //cos(sun zenith)
+    mu0 = cos(theta);
+
+    return 0;
+}
+
+/*
 mat Hydrooptics :: albedo(double al1, double al2) const{
+    // calculate albedo from parametrization
     mat al = zeros<mat>(1, lambda.n_cols);
     int i;
     for (i = 0; i < lambda.n_cols; i ++)
@@ -74,39 +131,28 @@ mat Hydrooptics :: albedo(double al1, double al2) const{
             
     return al;
 }
+*/
 
-mat Hydrooptics :: rrsw (mat c) const{
-    //[1 c0 c1 c2]
-    mat cc = cOne(c);
-    //total absorption
-    mat a = cc * m.rows(0, 3);
-    //total back-scattering
-    mat bb = cc * m.rows(4, 7);
-    //total subsurface remote sensing reflectance for deep waters
-    mat rrsw = RW0 + RW1 * bb / a + RW2 * (bb % bb) / (a % a);
-    mat result = rrsw;
+double Hydrooptics :: rrsw (double * c, int bn) const{
+    // calculate Rrsw from given C, for a given band
+    double a, bb, b, kd, r;
     
+    // deep
+    a  = aaw[bn] + aam[bn + 0 * bands] * c[0] + aam[bn + 1 * bands] * c[1] + aam[bn + 2 * bands] * c[2];
+    bb = bbw[bn] + bbm[bn + 0 * bands] * c[0] + bbm[bn + 1 * bands] * c[1] + bbm[bn + 2 * bands] * c[2];
+    r  = RW0 + RW1 * bb / a + RW2 * (bb * bb) / (a * a);
+    
+    // shallow
     if (h > 0){
-        // specific scattering (for WATER, CHL and TSM)
-        mat b = m.rows(4, 7); //.zeros();
-        b.row(0) /= B_WAT;
-        b.row(1) /= B_CHL;
-        b.row(2) /= B_TSM;
-
-        //total scattering
-        b = cc * b;
-
-        //volume attenuation coeff (Kd)
-        mat kd = sqrt(a % a + a % b * (KD0 + KD1 * mu0)) / mu0;
-
-        //total subsurface remote sensing reflectance for shallow waters
-        result = rrsw % (1 - exp(-2 * h * kd)) + al % exp(-2 * h * kd) / qf;
+        b  = bw[bn] + bm[bn + 0 * bands] * c[0] + bbm[bn + 1 * bands] * c[1] + bbm[bn + 2 * bands] * c[2] ;
+        kd = sqrt(a * a + a * bb * (KD0 + KD1 * mu0)) / mu0;
+        r = r * (1 - exp(-2 * h * kd)) + al[bn] * exp(-2 * h * kd) / qf;
     }
 
-    return result;
+    return r;
 };
 
-
+/*
 mat Hydrooptics :: rrsw (mat c, double al1, double al2) const{
     //[1 c0 c1 c2]
     mat cc = cOne(c);
@@ -136,16 +182,22 @@ mat Hydrooptics :: rrsw (mat c, double al1, double al2) const{
     //total subsurface remote sensing reflectance for shallow waters
     return rrsw % (1 - exp(-2 * h * kd)) + al % exp(-2 * h * kd) / qf;
 };
+*/
 
-mat Hydrooptics :: rs (mat c) const{
-    int i;
-    mat rs = rrsw(c) - s;
-    if (c(0, 0) < 0 || c(0, 1) < 0 || c(0, 2) < 0)
-        for (i = 0; i < rs.n_cols; i ++)
-            rs(0, i) = 100;
+double Hydrooptics :: rs (double * c, int bn) const{
+    // calcucate cost function
+    double rs;
+
+    rs = rrsw(c, bn) - s[bn];
+    //maybe rs ^ 2 ?
+    
+    if (c[0] < 0 || c[1] < 0 || c[2] < 0)
+        rs = 100;
+
     return rs;
 };
 
+/*
 mat Hydrooptics :: rs (mat c, double al1, double al2) const{
     int i;
     mat rs = rrsw(c, al1, al2) - s;
@@ -160,6 +212,7 @@ mat Hydrooptics :: rs (mat c, double al1, double al2) const{
             rs(0, i) = 100;
     return rs;
 };
+*/
 
 double Hydrooptics :: j_deep(double s,
                 double c0, double c1, double c2,
@@ -235,83 +288,61 @@ double Hydrooptics :: j_shallow_al2(double s,
     return (ll*exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)*(1.0/2.0E3))/qf;
 };
 
-mat Hydrooptics :: jacobian(mat c) const{
-    
-    mat j = zeros<mat>(3, s.n_cols);
+double Hydrooptics :: jacobian(double * c, int bn, int vn) const{
+    // calcluate jacobian for a given concentration/band/variable
     
     int v0n[3] = { 0, 1, 2 };
     int v1n[3] = { 1, 0, 0 };
     int v2n[3] = { 2, 2, 1 };
 
-    //cos(sun zenith)
-	double mu0 = cos(PI * theta / 180.);
-
     double c0, c1, c2, a0, a1, a2, bb0, bb1, bb2, b0, b1, b2, aWAT, bbWAT, bWAT;
-    double tmp;
+    double j;
     
-    mat aw = m.row(0);
-    mat bbw = m.row(4);
-    mat bw = bbw / B_WAT;
+    aWAT = aaw[bn];
+    bbWAT = bbw[bn];
+    bWAT = bw[bn];
+
+    c0 = c[v0n[vn]];
+    c1 = c[v1n[vn]];
+    c2 = c[v2n[vn]];
     
-    mat a = m.rows(1, 3);
-    mat bb = m.rows(5, 7);
+    // define aw, a, bb, b in constructor
+    a0 = aam[bn + v0n[vn]*bands];
+    a1 = aam[bn + v1n[vn]*bands];
+    a2 = aam[bn + v2n[vn]*bands];
 
-    // specific scattering (for CHL, TSM, DOC)
-    mat b = zeros<mat>(bb.n_rows, bb.n_cols);
-    b.row(0) = bb.row(0) / B_CHL;
-    b.row(1) = bb.row(1) / B_TSM;
-    b.row(2) = bb.row(2) / B_DOC;
+    bb0 = bbm[bn + v0n[vn]*bands];
+    bb1 = bbm[bn + v1n[vn]*bands];
+    bb2 = bbm[bn + v2n[vn]*bands];
 
-    for (int bn = 0; bn < s.n_cols; bn ++){
+    b0 = bm[bn + v0n[vn]*bands];
+    b1 = bm[bn + v1n[vn]*bands];
+    b2 = bm[bn + v2n[vn]*bands];
 
-        aWAT = aw(0, bn);
-        bbWAT = bbw(0, bn);
-        bWAT = bw(0, bn);
+    if (h < 0) {
 
-        for (int vn = 0; vn < 3; vn ++){
+        j = j_deep(s[bn],
+            c0, c1, c2,
+            a0, a1, a2,
+            bb0, bb1, bb2,
+            b0, b1, b2,
+            aWAT, bbWAT, bWAT);
 
-            c0 = c(v0n[vn]);
-            c1 = c(v1n[vn]);
-            c2 = c(v2n[vn]);
-        
-            a0 = a(v0n[vn], bn);
-            a1 = a(v1n[vn], bn);
-            a2 = a(v2n[vn], bn);
-        
-            bb0 = bb(v0n[vn], bn);
-            bb1 = bb(v1n[vn], bn);
-            bb2 = bb(v2n[vn], bn);
-    
-            b0 = b(v0n[vn], bn);
-            b1 = b(v1n[vn], bn);
-            b2 = b(v2n[vn], bn);
-        
-            if (h < 0) {
+    } else {
 
-                j(vn, bn) = j_deep(s(0, bn),
-                    c0, c1, c2,
-                    a0, a1, a2,
-                    bb0, bb1, bb2,
-                    b0, b1, b2,
-                    aWAT, bbWAT, bWAT);
-
-            } else {
-
-                j(vn, bn) = j_shallow(s(0, bn),
-                    c0, c1, c2,
-                    a0, a1, a2,
-                    bb0, bb1, bb2,
-                    b0, b1, b2,
-                    aWAT, bbWAT, bWAT,
-                    al(0, bn));
-            }
-        }
+        j = j_shallow(s[bn],
+            c0, c1, c2,
+            a0, a1, a2,
+            bb0, bb1, bb2,
+            b0, b1, b2,
+            aWAT, bbWAT, bWAT,
+            al[bn]);
     }
-    
+
     return j;
 };
 
-
+/*
 //Calculate Jacobian of the cost function:
 //partial derivative of the cost function by each concentration and albedo
 //Returns vector for the entrie spectrum
@@ -396,14 +427,13 @@ mat Hydrooptics :: jacobian(mat c, double al1, double al2) const{
     //cout << j << endl;    
     return j;
 }
+*/
 
-
-mat startingCPA(double parameters[9], mat m){
+int startingCPA(double parameters[9], double * startC){
     int ci0, ci1, ci2;
     double c0, c1, c2, dc0, dc1, dc2;
     double starts = parameters[1];
     int k, fullSize = starts * starts * starts;
-    mat startC = zeros<mat>(fullSize, 3);
     
     double min0 = parameters[3], max0 = parameters[4];
     double min1 = parameters[5], max1 = parameters[6];
@@ -420,9 +450,10 @@ mat startingCPA(double parameters[9], mat m){
         for (ci1 = 0; ci1 < starts; ci1 ++){
             c2 = min2;
             for (ci2 = 0; ci2 < starts; ci2 ++){
-                startC(k, 0) = c0;
-                startC(k, 1) = c1;
-                startC(k, 2) = c2;
+                startC[k * 3 + 0] = c0;
+                startC[k * 3 + 1] = c1;
+                startC[k * 3 + 2] = c2;
+                printf("start: %d %f %f %f \n", k, startC[k * 3 + 0], startC[k * 3 + 1], startC[k * 3 + 2]);
                 k ++;
                 c2 += dc2;
             }
@@ -430,9 +461,11 @@ mat startingCPA(double parameters[9], mat m){
         }
         c0 += dc0;
     }
-    return startC;
+
+    return fullSize;
 }
 
+/*
 mat startingCPA_al(double parameters[9], mat m){
     int ci0, ci1, ci2, ci3, ci4;
     double c0, c1, c2, c3, c4, dc0, dc1, dc2, dc3, dc4;
@@ -484,8 +517,10 @@ mat startingCPA_al(double parameters[9], mat m){
 
     return startC;
 }
+*/
+
 //iterface to python
-//calculate Rrsw from given concentrations, albedo, depth, sola zenith
+//calculate Rrsw from given concentrations, albedo, depth, solar zenith
 extern int get_rrsw(double parameters[9],
          double *model, int model_n0, int model_n1,
          double inC[3],
@@ -494,47 +529,18 @@ extern int get_rrsw(double parameters[9],
          double theta,
          double *outR, int outR_n0){
 
-    int i, j, k, bands = outR_n0;
-    //matrix for the model
-    mat m = zeros<mat>(8, bands);
-    //matrix for the concentrations
-    mat c = zeros<mat>(1, 3);
-    //matrix for the bottom albedo vecotr
-    mat al = zeros<mat>(1, bands);
-    //reconstructed reflectance
-    mat r;
-
-    //get model from Python
-    //m.rows(0, 3) - specific absorption
-    //m.rows(4, 7) - specific backscattering
-    k = 0;
-    for (i = 0; i < 8; i ++){
-        for (j = 0; j < bands; j ++){
-            m(i, j) = model[k];
-            k ++;
-        };
-    };
-
-    //get concentrations from Python
-    c(0,0) = inC[0];
-    c(0,1) = inC[1];
-    c(0,2) = inC[2];
-
-    //get albedo from Python
-    for (i = 0; i < bands; i ++){
-        al(0, i) = albedo[i];
-    };
+    int bn;
 
     //init HO-object
-    Hydrooptics ho(m, al, h, theta);
-    
-    //use HO-object for estimation of Rrsw
-    r = ho.rrsw(c);
-    
-    //sent Rrsw values back to Python
-    for (i = 0; i < bands; i ++){
-        outR[i] = r(0, i);
+    Hydrooptics ho(outR_n0, model);
+    //set ho-conditions
+    ho.set_params(albedo, h, theta);
+
+    for (bn = 0; bn < outR_n0; bn ++){
+        //use HO-object for estimation of Rrsw
+        outR[bn] = ho.rrsw(inC, bn);
     };
+
     return 0;
 };
 
@@ -550,7 +556,8 @@ extern int get_rrsw_al(double parameters[9],
          double al1,
          double al2,
          double *outR, int outR_n0){
-
+}
+/*
     int i, j, k, bands = outR_n0;
     //matrix for the model
     mat m = zeros<mat>(8, bands);
@@ -594,7 +601,7 @@ extern int get_rrsw_al(double parameters[9],
     };
     return 0;
 };
-
+*/
 extern int get_c(double parameters[9],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
@@ -603,36 +610,20 @@ extern int get_c(double parameters[9],
          double *theta, int theta_rows,
          double *outC, int outC_length){
 
-    int i, j, k, pi, bands = inR_cols, pixels = inR_rows;
+    int bn, i, j, k, pi, bands = inR_cols, pixels = inR_rows;
     printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
     
     //result of optimization
     double xBest[4];
-    //model
-    mat m = zeros<mat>(8, bands);
-    //concentrations
-    mat c = zeros<mat>(1, 3);
-    //bottom albedo
-    mat al = zeros<mat>(1, bands);
-    //measured reflectance
-    mat s = zeros<mat>(1, bands);
-
-    //get model from Python
-    //m.rows(0, 3) - specific absorption
-    //m.rows(4, 7) - specific backscattering
-    k = 0;
-    for (i = 0; i < 8; i ++){
-        for (j = 0; j < bands; j ++){
-            m(i, j) = model[k];
-            k ++;
-        };
-    };
-
-    //create starting CPA
-    mat startC = startingCPA(parameters, m);
 
     //init HO-object
-    Hydrooptics ho(m, al, h[i], theta[i]);
+    //Hydrooptics(int inBands, double * inModel, double * inAL, double inH, double inTheta);
+    Hydrooptics ho(bands, model);
+    
+    //ho.set_params(albedo, h, theta);
+    //create starting CPA
+    double * startC = new double (3 * parameters[1]);
+    int startCN = startingCPA(parameters, startC);
 
     //prepare for optimization with CMINPACK
     real x[3], fvec[10], fjac[30], tol, wa[300], fnorm;
@@ -642,43 +633,37 @@ extern int get_c(double parameters[9],
 
     //for all pixels
     for (i = 0; i < pixels; i ++){
-        //get measured Rrsw from Python
-        for (j = 0; j < bands; j ++)
-            s(0, j) = inR[j + i*bands];
-        
-        //cout << s << endl;
-
-        //get albedo from Python
-        for (j = 0; j < bands; j ++)
-            al(0, j) = albedo[j + i*bands];
 
         //set measured Rrsw, albedo, depth and solar zenith in the HO-object
-        ho.s = s;
-        ho.al = al;
-        ho.h = h[i];
-        ho.theta = theta[i];
+        ho.set_params(albedo + j + i*bands, h[i], theta[i]);
+        ho.s = (inR + j + i*bands);
+        
+        for (bn = 0; bn < ho.bands; bn ++){
+            printf("ho.s[bn: %f\n", ho.s[bn]);
+            printf("ho.al[bn: %f\n", ho.al[bn]);
+        }
 
         //erase xBest
         for (j = 0; j < 4; j ++)
             xBest[j] = 100;
 
         //start optimization several times and select the best result
-        for (k = 0; k < startC.n_rows && xBest[3] > parameters[2]; k ++){
+        for (k = 0; k < startCN && xBest[3] > parameters[2]; k ++){
             // set initial concentrations
-            //printf("start [%d]: ", k);
+            printf("start [%d]: ", k);
             for (j = 0; j < 3; j ++){
-                x[j] = startC(k, j);
-                //printf("%5.2g ", (double)x[j]);
+                x[j] = startC[k * 3 + j];
+                printf("%5.2g ", (double)x[j]);
             };
             //perform optimization
             info = __cminpack_func__(lmder1)(fcn, &ho, bands, 3, x, fvec, fjac, bands, tol, ipvt, wa, lwa);
             //estimate norm of residuals
             fnorm = __cminpack_func__(enorm)(bands, fvec);
     
-            //printf(" ==> ");
-            //for (j = 0; j < 3; j ++)
-            //    printf("%5.2g ", (double)x[j]);
-            //printf("%7.4g\n", (double)fnorm);
+            printf(" ==> ");
+            for (j = 0; j < 3; j ++)
+                printf("%5.2g ", (double)x[j]);
+            printf("%7.4g\n", (double)fnorm);
             
             if (fnorm < xBest[3]){
                 for (j = 0; j < 3; j ++)
@@ -686,14 +671,16 @@ extern int get_c(double parameters[9],
                 xBest[3] = (double)fnorm;
             }
         }
-        //printf("iterations: %d\n", k);
+        
+        printf("iterations: %d\n", k);
         
         //sent values of concentrtions and residuals back to Python
-        //printf("final result: %d ", i);
+        printf("final result: %d ", i);
         for (j = 0; j < 4; j ++){
-            //printf("%g ", xBest[j]);
+            printf("%g ", xBest[j]);
             outC[j + i*4] = xBest[j];
         }
+
         if (fmod(i, 100.) == 0.)
             printf("%d\n", i);
     }
@@ -710,7 +697,8 @@ extern int get_c_al(double parameters[9],
          double *h, int h_rows,
          double *theta, int theta_rows,
          double *outC, int outC_length){
-
+}
+/*
     int i, j, k, pi, bands = inR_cols, pixels = inR_rows;
     printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
     
@@ -822,51 +810,48 @@ extern int get_c_al(double parameters[9],
     printf("OK!\n");
     return 0;
 };
+*/
 
 int fcn(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
 	 int ldfjac, int iflag){
 
-    int i0, i1;
+    int bn, i1;
     const Hydrooptics *ho = (Hydrooptics *)p;
-    
-    mat c;
-    mat rs;
-    mat j;
-    
-    c << x[0] << x[1] << x[2];
-    //printf("fcn: c:\n");
-    //cout << c << endl;
-    
+    double c[3];
+    double rsval;
     
     if (iflag == 1){
-        rs = ho -> rs(c);
-        
-        //printf("fcn: rs:\n");
-        //cout << rs << endl;
 
-        for (i0 = 0; i0 < m; i0 ++){
-            fvec[i0] = rs(0, i0);
+        
+        c[0] = x[0];
+        c[1] = x[1];
+        c[2] = x[2];
+        
+        // calculate cost function
+        for (bn = 0; bn < m; bn ++){
+            rsval = ho -> rs(c, bn);
+            fvec[bn] = rsval;
             //printf("fcn: fvec:%d %f\n", i0, fvec[i0]);
         };
-    } else {
 
-        j = ho->jacobian(c);
+    } else {
 
         //printf("fcn: j:\n");
         //cout << j << endl;
-        
-        for (i0 = 0; i0 < m; i0 ++){
-            fjac[i0 + ldfjac*0] = j(0, i0);
-            fjac[i0 + ldfjac*1] = j(1, i0);
-            fjac[i0 + ldfjac*2] = j(2, i0);
+        //calculate jacobians
+        for (bn = 0; bn < m; bn ++){
+            fjac[bn + ldfjac*0] = ho->jacobian(c, bn, 0);
+            fjac[bn + ldfjac*1] = ho->jacobian(c, bn, 1);
+            fjac[bn + ldfjac*2] = ho->jacobian(c, bn, 2);
             
             //printf("fcn: fjac:%d %f %f %f\n", i0, fjac[i0 + ldfjac*0], fjac[i0 + ldfjac*1], fjac[i0 + ldfjac*2]);
         };
     };
-
+    
     return 0;
 };
 
+/*
 int fcn_al(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
 	 int ldfjac, int iflag){
 
@@ -912,3 +897,4 @@ int fcn_al(void *p, int m, int n, const real *x, real *fvec, real *fjac,
 
     return 0;
 };
+*/
