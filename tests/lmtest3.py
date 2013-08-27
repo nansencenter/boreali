@@ -1,5 +1,6 @@
 #!/usr/bin/python
 from lmtest0 import *
+import time
 
 # select silicon sand albedo
 albedo = albedos[0](wavelen)
@@ -34,7 +35,10 @@ for h0 in [5, 10, 20]:
     aaa2 = aaa - np.multiply(aaa, aaa2ratio) + np.multiply(aaa2, aaa2ratio)
     
     # retrieve N concetrations
+    t0 = time.time()
     ccc2 = lm.get_c(parameters, model, rrr, aaa2, hhh, ttt, 4*pixels)[1]
+    t1 = time.time()
+    print 'Time spent:', t1-t0
     ccc2 = np.array(ccc2).reshape(pixels, 4)
     
     # get relative difference and keep it

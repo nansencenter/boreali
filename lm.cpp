@@ -620,7 +620,7 @@ extern int get_c(double parameters[9],
          double *outC, int outC_length){
 
     int bn, i, j, k, bands = inR_cols, pixels = inR_rows;
-    printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
+    printf("Retrieval from %d bands x %d pixels (W/O ARMA)...\n", bands, pixels);
     
     //result of optimization
     double xBest[4];
@@ -651,20 +651,20 @@ extern int get_c(double parameters[9],
         //start optimization several times and select the best result
         for (k = 0; k < startCN && xBest[3] > parameters[2]; k ++){
             // set initial concentrations
-            printf("start [%d]: ", k);
+            //printf("start [%d]: ", k);
             for (j = 0; j < 3; j ++){
                 x[j] = startC[k * 3 + j];
-                printf("%5.2g ", (double)x[j]);
+                //printf("%5.2g ", (double)x[j]);
             };
             //perform optimization
             info = __cminpack_func__(lmder1)(fcn, &ho, bands, 3, x, fvec, fjac, bands, tol, ipvt, wa, lwa);
             //estimate norm of residuals
             fnorm = __cminpack_func__(enorm)(bands, fvec);
     
-            printf(" ==> ");
-            for (j = 0; j < 3; j ++)
-                printf("%5.2g ", (double)x[j]);
-            printf("%7.4g\n", (double)fnorm);
+            //printf(" ==> ");
+            //for (j = 0; j < 3; j ++)
+            //    printf("%5.2g ", (double)x[j]);
+            //printf("%7.4g\n", (double)fnorm);
             
             if (fnorm < xBest[3]){
                 for (j = 0; j < 3; j ++)
@@ -673,12 +673,12 @@ extern int get_c(double parameters[9],
             }
         }
         
-        printf("iterations: %d\n", k);
+        //printf("iterations: %d\n", k);
         
         //sent values of concentrtions and residuals back to Python
-        printf("final result: %d ", i);
+        //printf("final result: %d ", i);
         for (j = 0; j < 4; j ++){
-            printf("%g ", xBest[j]);
+            //printf("%g ", xBest[j]);
             outC[j + i*4] = xBest[j];
         }
 
