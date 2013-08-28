@@ -109,6 +109,11 @@ class Hydrooptics {
     //Returns vector for the entrie spectrum
     double rs (double * c, int bn) const;
 
+
+    //Calcualte sum square error: sum pf squared cost function for all bands
+    //reconstructed R for given C
+    double sse (double * c) const;
+
     //Calcualte cost function: difference between measured and
     //reconstructed R for given C and ALR
     //Returns vector for the entrie spectrum

@@ -194,7 +194,7 @@ mat Hydrooptics :: rrsw (mat c, double al1, double al2) const{
 */
 
 double Hydrooptics :: rs (double * c, int bn) const{
-    // calcucate cost function
+    // calcucate cost function per band
     double rs;
 
     rs = rrsw(c, bn) - s[bn];
@@ -206,6 +206,16 @@ double Hydrooptics :: rs (double * c, int bn) const{
     return rs;
 };
 
+double  Hydrooptics :: sse (double * c) const{
+    // calculate sum square error of all bands
+    double sse = 0;
+    int bn;
+
+    for (bn = 0; bn < bands; bn ++)
+        sse += pow(rs(c, bn),2);
+
+    return sse;
+};
 /*
 mat Hydrooptics :: rs (mat c, double al1, double al2) const{
     int i;
