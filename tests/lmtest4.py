@@ -6,7 +6,6 @@ albedo = albedos[2](wavelen)
 
 # plot typical simulated Rrsw for shallow waters
 for h0 in [1, 5, 10, 20]:
-    #tough test of LM-retrieval
     #generate N random concentrations, depths, albedos, solarzenith angles
     pixels = 5000
     cRange = np.array([1., .5, .2])

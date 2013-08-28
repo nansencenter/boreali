@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 #from boreali import Boreali
 from scipy import interpolate
 
-parameters=[6, 3, 1e-6, 
-            0.01, 2,
-            0.01, 1,
-            0.01, 1,]
+parameters=[6, 10, 1e-10, 
+            0.01, 15,
+            0.01, 5,
+            0.01, 5,]
 
 bands = 6
 wavelen = [412, 443, 490, 510, 555, 670]

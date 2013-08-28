@@ -7,10 +7,10 @@ albedo = albedos[0](wavelen)
 
 dcccH = []
 
-for h0 in [5, 10, 20]:
+for h0 in [2, 5, 10, 20]:
     #tough test of LM-retrieval
     #generate N random concentrations, depths, albedos, solarzenith angles
-    pixels = 5000
+    pixels = 2000
     cRange = np.array([1., .5, .5])
     ccc = np.multiply(cRange, np.random.rand(pixels, 3))
     #hhh = 5 + np.random.rand(pixels) * 5  # H in range 5 - 10 m
@@ -22,6 +22,10 @@ for h0 in [5, 10, 20]:
     rrr = []
     for i, c in enumerate(ccc):
         r = lm.get_rrsw(parameters, model, c, aaa[i], hhh[i], ttt[i], 6)[1]
+        # add random noise to Rrsw +/- %
+        rNoise = 1 + (np.random.randn(1, r.shape[0]) - np.random.randn(1, r.shape[0])) * 0.0
+        r *= rNoise[0]
+        # append r to list
         rrr.append(r)
     
     # add random noise to depth (+/- 1 m)
@@ -49,7 +53,7 @@ for h0 in [5, 10, 20]:
 cTitles = ['CHL-CHL2', 'TSM-TSM2', 'DOC-DOC2']
 for ci in [0, 1, 2]:
     plt.close()
-    for hi in [0, 1, 2]:
+    for hi in [0, 1, 2, 3]:
         # get relative difference for that depth for that concentration
         dch = dcccH[hi][:, ci]
         # add histogram
@@ -57,7 +61,7 @@ for ci in [0, 1, 2]:
         print len(dch[np.abs(dch) < 0.1]) / float(pixels)
     
     plt.title(cTitles[ci])
-    plt.legend(['H=5', 'H=10', 'H=20'])
+    plt.legend(['H=2', 'H=5', 'H=10', 'H=20'])
     plt.xlabel('concentration')
     plt.ylabel('pixels')
     plt.savefig('hist_%s_a.png' % cTitles[ci])

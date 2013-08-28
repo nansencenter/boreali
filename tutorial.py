@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import matplotlib
+matplotlib.use('Agg')
 """ Boreali turorial 
 Import modules including Boreali and lm
 Boreali is for processing satellite images
@@ -33,7 +35,7 @@ h = -10 # boreali will not use bottom correction if h < 0
 theta = 0 # sun in zenith
 
 # set LM parameters
-parameters=[len(wavelen), 3, 1e-7, 
+parameters=[len(wavelen), 10, 0, 
             0.01, 2,
             0.01, 1,
             0.01, 1,]

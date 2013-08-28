@@ -1,8 +1,6 @@
 #!/usr/bin/python
 from lmtest0 import *
 
-# plot typical real Rrsw for shallow waters
-
 from nansat import *
 
 from obpg_l2_image import OBPGL2Image
