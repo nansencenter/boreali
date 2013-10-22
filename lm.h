@@ -67,27 +67,24 @@ class Hydrooptics {
     double mu0;
     
     //Constructor:
-    //Set model, albedo, depth, solar zenith
+    //Set number of bands and the HO-model
     Hydrooptics(int inBands, double * inModel);
 
     //Destructor
     //Clean memory from model
     ~Hydrooptics();
     
-    //Set       model,   depth,    solar zenith  wavelengths, 
-    //Hydrooptics(mat inM, double h, double theta, mat inLambda);
-    
     //set hydro-optical model in the object
     int set_model(double * model);
     
-    //set hydo-optical conditions
+    //set hydo-optical conditions: reflectance, albedo, depth, solar zenith
     int set_params(double * inS, double * inAL, double inH, double inTheta);
-    
-    //create matrix [1 c0 c1 c2]
-    //mat cOne(mat c) const;
 
+    //set hydo-optical conditions: reflectance, depth, solar zenith
+    int set_params(double * inS, double inH, double inTheta);
+    
     //albedo approximation
-    //mat albedo(double al1, double al2) const;
+    double albedo(double al1, double al2);
 
     //caluclate Subsurface remote sensing refectance (Rrsw) from given C
     //for deep waters

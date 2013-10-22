@@ -10,7 +10,7 @@ dcccH = []
 for h0 in [2, 5, 10, 20]:
     #tough test of LM-retrieval
     #generate N random concentrations, depths, albedos, solarzenith angles
-    pixels = 2000
+    pixels = 5000
     cRange = np.array([1., .5, .5])
     ccc = np.multiply(cRange, np.random.rand(pixels, 3))
     #hhh = 5 + np.random.rand(pixels) * 5  # H in range 5 - 10 m
@@ -23,7 +23,7 @@ for h0 in [2, 5, 10, 20]:
     for i, c in enumerate(ccc):
         r = lm.get_rrsw(parameters, model, c, aaa[i], hhh[i], ttt[i], 6)[1]
         # add random noise to Rrsw +/- %
-        rNoise = 1 + (np.random.randn(1, r.shape[0]) - np.random.randn(1, r.shape[0])) * 0.0
+        rNoise = 1 + (np.random.randn(1, r.shape[0]) - np.random.randn(1, r.shape[0])) * 0.01
         r *= rNoise[0]
         # append r to list
         rrr.append(r)

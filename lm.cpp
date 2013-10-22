@@ -641,7 +641,9 @@ extern int get_c(double parameters[9],
     printf("Retrieval from %d bands x %d pixels (W/O ARMA)...\n", bands, pixels);
     
     //result of optimization
-    double xBest[4];
+    double xBest[6];
+    
+    // number of results: 3 for input with albedo, 5 for input without albedo
 
     //init HO-object
     Hydrooptics ho(bands, model);
@@ -652,9 +654,8 @@ extern int get_c(double parameters[9],
     double startC[3000];
     int startCN = startingCPA(parameters, startC);
 
-
     //prepare for optimization with CMINPACK
-    real x[3], fvec[10], fjac[30], tol, wa[300], fnorm;
+    real x[5], fvec[10], fjac[30], tol, wa[300], fnorm;
     int info, ipvt[3], lwa = 100;
     //set tolerance to square of the machine recision
     tol = sqrt(__cminpack_func__(dpmpar)(1));
@@ -690,7 +691,7 @@ extern int get_c(double parameters[9],
         qsort(ssep, startCN, sizeof *ssep, compare);
         
         // start optimization from 5 best starting vectors
-        startCN = 5;
+        startCN = 10;
         for (k = 0; k < startCN && xBest[3] > parameters[2]; k ++){
             //get index of the k-th best starting vector
             kBest = ssep[k]-sse;
@@ -867,13 +868,12 @@ int fcn(void *p, int m, int n, const real *x, real *fvec, real *fjac,
     double c[3];
     double rsval;
     
+    c[0] = x[0];
+    c[1] = x[1];
+    c[2] = x[2];
+
     if (iflag == 1){
 
-        
-        c[0] = x[0];
-        c[1] = x[1];
-        c[2] = x[2];
-        
         // calculate cost function
         for (bn = 0; bn < m; bn ++){
             rsval = ho -> rs(c, bn);
@@ -904,13 +904,13 @@ int fcn_al(void *p, int m, int n, const real *x, real *fvec, real *fjac,
 
     int i0, i1;
     const Hydrooptics *ho = (Hydrooptics *)p;
+    double c[3];
     double al1, al2;
+    double rsval;
     
-    mat c;
-    mat rs;
-    mat j;
-    
-    c << x[0] << x[1] << x[2];
+    c[0] = x[0];
+    c[1] = x[1];
+    c[2] = x[2];
     al1 = x[3];
     al2 = x[4];
     //printf("fcn: c:\n");
