@@ -6,9 +6,7 @@
 #include <iostream>
 
 //include CMINPACK for Levenberg-Marquardt optimization
-//http://devernay.free.fr/hacks/cminpack/index.html
 #include <cminpack.h>
-#define real __cminpack_real__
 
 using namespace std;
 //using namespace arma;
@@ -108,6 +106,6 @@ class Hydrooptics {
 int startingCPA(double * parameters, double * startC);
 
 //Interface for the LM-optimization library
-int fcn(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
+int fcn(void *p, int m, int n, const double *x, double *fvec, double *fjac, 
 	 int ldfjac, int iflag);
 

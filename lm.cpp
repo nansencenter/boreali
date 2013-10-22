@@ -5,18 +5,10 @@
 #include <stdio.h>
 #include <iostream>
 
-//include Armadillo: C++ linear algebra library 
-//http://arma.sourceforge.net/
-//#include <armadillo>
-
 //include CMINPACK for Levenberg-Marquardt optimization
-//http://devernay.free.fr/hacks/cminpack/index.html
 #include <cminpack.h>
-//#define real __cminpack_real__
-#define real long double
 
 using namespace std;
-//using namespace arma;
 
 #include "lm.h"
 
@@ -290,10 +282,10 @@ extern int get_c(double parameters[6],
     int startBestCN = 10;
     
     //prepare for optimization with CMINPACK
-    real x[5], fvec[10], fjac[30], tol, wa[300], fnorm;
+    double x[5], fvec[10], fjac[30], tol, wa[300], fnorm;
     int info, ipvt[3], lwa = 100;
     //set tolerance to square of the machine recision
-    tol = sqrt(__cminpack_func__(dpmpar)(1));
+    tol = sqrt(dpmpar(1));
 
     //for all pixels
     for (i = 0; i < pixels; i ++){
@@ -338,9 +330,9 @@ extern int get_c(double parameters[6],
             };
 
             //perform optimization
-            info = __cminpack_func__(lmder1)(fcn, &ho, bands, 3, x, fvec, fjac, bands, tol, ipvt, wa, lwa);
+            info = lmder1(fcn, &ho, bands, 3, x, fvec, fjac, bands, tol, ipvt, wa, lwa);
             //estimate norm of residuals
-            fnorm = __cminpack_func__(enorm)(bands, fvec);
+            fnorm = enorm(bands, fvec);
     
             if (log1) {
                 printf(" ==> ");
@@ -374,7 +366,7 @@ extern int get_c(double parameters[6],
 };
 
 
-int fcn(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
+int fcn(void *p, int m, int n, const double *x, double *fvec, double *fjac, 
 	 int ldfjac, int iflag){
 
     int bn, i1;

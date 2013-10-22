@@ -37,8 +37,8 @@ rrr = []
 for i, c in enumerate(ccc):
     r = lm.get_rrsw(model, c, ttt[i], 6)[1]
     # add random noise to Rrsw +/- %
-    rNoise = 1 + (np.random.randn(1, r.shape[0]) - np.random.randn(1, r.shape[0])) * 0.01
-    r *= rNoise[0]
+    rNoise = 1 + (np.random.randn(1, r.shape[0]) - np.random.randn(1, r.shape[0])) * 0.05
+    r *= rNoise[0, 0]
     # append r to list
     rrr.append(r)
 
