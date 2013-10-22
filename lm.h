@@ -5,10 +5,6 @@
 #include <stdio.h>
 #include <iostream>
 
-//include Armadillo: C++ linear algebra library 
-//http://arma.sourceforge.net/
-//#include <armadillo>
-
 //include CMINPACK for Levenberg-Marquardt optimization
 //http://devernay.free.fr/hacks/cminpack/index.html
 #include <cminpack.h>
@@ -67,27 +63,21 @@ class Hydrooptics {
     double mu0;
     
     //Constructor:
-    //Set model, albedo, depth, solar zenith
+    //Set number of bands and the HO-model
     Hydrooptics(int inBands, double * inModel);
 
     //Destructor
     //Clean memory from model
     ~Hydrooptics();
     
-    //Set       model,   depth,    solar zenith  wavelengths, 
-    //Hydrooptics(mat inM, double h, double theta, mat inLambda);
-    
     //set hydro-optical model in the object
     int set_model(double * model);
     
-    //set hydo-optical conditions
-    int set_params(double * inS, double * inAL, double inH, double inTheta);
-    
-    //create matrix [1 c0 c1 c2]
-    //mat cOne(mat c) const;
+    //set hydo-optical conditions: reflectance, albedo, depth, solar zenith
+    int set_params(double inTheta);
 
-    //albedo approximation
-    //mat albedo(double al1, double al2) const;
+    //set hydo-optical conditions: reflectance, albedo, depth, solar zenith
+    int set_params(double * inS, double inTheta);
 
     //caluclate Subsurface remote sensing refectance (Rrsw) from given C
     //for deep waters
@@ -96,39 +86,20 @@ class Hydrooptics {
     //Returns vector for the entrie spectrum
     double rrsw (double * c, int bn) const;
 
-    //caluclate Subsurface remote sensing refectance (Rrsw) from given C
-    //and given ALR
-    //for deep waters
-    //Other parameters (model, albedo, depth, sola zenith) are defined
-    //in the object (at initialization)
-    //Returns vector for the entrie spectrum
-    //double rrsw (mat c, double al1, double al2) const;
-
     //Calcualte cost function: difference between measured and
     //reconstructed R for given C
     //Returns vector for the entrie spectrum
     double rs (double * c, int bn) const;
 
-
     //Calcualte sum square error: sum pf squared cost function for all bands
     //reconstructed R for given C
     double sse (double * c) const;
-
-    //Calcualte cost function: difference between measured and
-    //reconstructed R for given C and ALR
-    //Returns vector for the entrie spectrum
-    //mat rs (mat c, double al1, double  al2) const;    
 
     //Calculate Jacobian of the cost function:
     //partial derivative of the cost function by each concentration
     //Returns vector for the entrie spectrum
     double jacobian(double * c, int bn, int vn) const;
 
-    //Calculate Jacobian of the cost function:
-    //partial derivative of the cost function by each concentration and albedo
-    //Returns vector for the entrie spectrum
-    //mat jacobian(mat c, double al1, double al2) const;
-    
     //Calculate Jacobian of the cost function for deep waters
     //Returns single value at one wavelength
     double j_deep(double s,
@@ -137,35 +108,6 @@ class Hydrooptics {
                 double bb0, double bb1, double bb2,
                 double b0, double b1, double b2,
                 double aWAT, double bbWAT, double bWAT) const;
-    //Calculate Jacobian of the cost function for shallow waters
-    //Returns single value at one wavelength
-    double j_shallow(double s,
-                double c0, double c1, double c2,
-                double a0, double a1, double a2,
-                double bb0, double bb1, double bb2,
-                double b0, double b1, double b2,
-                double aWAT, double bbWAT, double bWAT,
-                double al) const;
-
-    //Calculate Jacobian of the cost function with additional variable: albedo
-    //Returns single value of derivative on C at one wavelength
-    double j_shallow_c0(double s,
-                double c0, double c1, double c2,
-                double a0, double a1, double a2,
-                double bb0, double bb1, double bb2,
-                double b0, double b1, double b2,
-                double aWAT, double bbWAT, double bWAT,
-                double al1, double al2, double ll) const;
-
-    //Calculate Jacobian of the cost function with additional variable: albedo
-    //Returns single value of derivative on ALR (albedo ratio) at one wavelength
-    double j_shallow_al1(double s,
-                double c0, double c1, double c2,
-                double a0, double a1, double a2,
-                double bb0, double bb1, double bb2,
-                double b0, double b1, double b2,
-                double aWAT, double bbWAT, double bWAT,
-                double al1, double al2, double ll) const;
 
     //Calculate Jacobian of the cost function with additional variable: albedo
     //Returns single value of derivative on ALR (albedo ratio) at one wavelength
@@ -185,7 +127,3 @@ int startingCPA(double * parameters, double * startC);
 int fcn(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
 	 int ldfjac, int iflag);
 
-
-//Interface for the LM-optimization library
-//int fcn_al(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
-//	 int ldfjac, int iflag);
