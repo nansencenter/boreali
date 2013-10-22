@@ -104,7 +104,7 @@ class Boreali():
         
         return abCoef
 
-    def get_wavelengths(self, img, opts, wavelen=None):
+    def get_wavelengths(self, img, wavelen=None):
         '''Return list of wavelengths from the available bands in img
         
         Open input Nansat image and loop through band names. Find for
@@ -114,8 +114,6 @@ class Boreali():
         -----------
         img : Nansat
             input Nansat object with bands with names 'Rrsw_NNN'
-        opts : list with options
-            opts[0] should contain number of bands to read from file
         wavelen : list of integers
             list of wavelengths (in nm) to find in the input file.
             If empty - all Rrsw_ bands are read
@@ -137,8 +135,6 @@ class Boreali():
                         (wavelen is not None and wl in wavelen)):
                     wavelengths.append(wl)
                     bands += 1
-                if bands >= opts[0]:
-                    break
         return wavelengths
     
     def get_rrsw(self, img, flexible):
@@ -243,8 +239,7 @@ class Boreali():
             'Rrsw_NNN' where NNN is an integer value of wavelength in nm
             NNN should match the wavelengths from the self.wavelen 
             created when initializing Boreali object
-        opts : list with 9 values
-            number of bands; number of starting vectors; min. RMSE;
+        opts : list with 6 values
             min/max of each CPA to retreive
         mask : Numpy 2D array (same shape as img)
             Nansat L2 mask with values 0, 1, 2, 64 meaning:
@@ -270,7 +265,7 @@ class Boreali():
                 designates negative Rrsw values
         '''
         # get wavelengths
-        self.wavelen = self.get_wavelengths(img, opts, self.wavelen)
+        self.wavelen = self.get_wavelengths(img, self.wavelen)
         print 'wavelen', self.wavelen
 
         # assume all pixel are valid if mask is not given

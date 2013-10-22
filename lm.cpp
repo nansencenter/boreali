@@ -268,6 +268,9 @@ extern int get_c(double parameters[6],
          double *theta, int theta_rows,
          double *outC, int outC_length){
 
+    bool log1 = false;
+    bool log2 = false;
+    
     int bn, i, j, k, kBest, bands = inR_cols, pixels = inR_rows;
     printf("Retrieval from %d bands x %d pixels (W/O ARMA)...\n", bands, pixels);
     
@@ -307,16 +310,16 @@ extern int get_c(double parameters[6],
         for (k = 0; k < startCN; k ++){
             
             // set initial concentrations
-            //printf("start [%d]: ", k);
+            if (log1 and log2) printf("start [%d]: ", k);
             for (j = 0; j < 3; j ++){
                 x[j] = startC[k * 3 + j];
-                //printf("%5.2g ", (double)x[j]);
+                if (log1 and log2) printf("%5.2g ", (double)x[j]);
             };
             
             // keep SSE and pointer to SSE
             sse[k] = ho.sse(x);
             ssep[k] = &sse[k];
-            //printf("orig: %d %f %u\n", k, sse[k], ssep[k]);
+            if (log1 and log2) printf("orig: %d %f %u\n", k, sse[k], ssep[k]);
         }
         
         //sort SSE pointers
@@ -328,10 +331,10 @@ extern int get_c(double parameters[6],
             kBest = ssep[k]-sse;
             
             // set initial concentrations
-            //printf("start [%d]: ", kBest);
+            if (log1) printf("start [%d / %d]: ", k, kBest);
             for (j = 0; j < 3; j ++){
                 x[j] = startC[kBest * 3 + j];
-                //printf("%5.2g ", (double)x[j]);
+                if (log1) printf("%5.2g ", (double)x[j]);
             };
 
             //perform optimization
@@ -339,10 +342,12 @@ extern int get_c(double parameters[6],
             //estimate norm of residuals
             fnorm = __cminpack_func__(enorm)(bands, fvec);
     
-            //printf(" ==> ");
-            //for (j = 0; j < 3; j ++)
-            //    printf("%5.2g ", (double)x[j]);
-            //printf("%7.4g\n", (double)fnorm);
+            if (log1) {
+                printf(" ==> ");
+                for (j = 0; j < 3; j ++)
+                    printf("%5.2g ", (double)x[j]);
+                printf("%7.4g\n", (double)fnorm);
+            }
             
             if (fnorm < xBest[3]){
                 for (j = 0; j < 3; j ++)
@@ -352,15 +357,15 @@ extern int get_c(double parameters[6],
         }
         
         //sent values of concentrtions and residuals back to Python
-        //printf("final result: %d ", i);
+        if (log1) printf("final result: %d ", i);
         for (j = 0; j < 4; j ++){
-            //printf("%g ", xBest[j]);
+            if (log1) printf("%g ", xBest[j]);
             outC[j + i*4] = xBest[j];
         }
-        //printf("\n");
+        if (log1) printf("\n");
 
         if (fmod(i, 100.) == 0.)
-            printf("%d\n", i);
+            printf("%d / %f \n", i, (double)(i) / (double)(pixels));
     }
 
     printf("OK!\n");

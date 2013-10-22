@@ -30,8 +30,7 @@ wavelen = [413, 443, 490, 510, 560, 620, 665, 681, 709] # MERIS bands
 b = Boreali('michigan', wavelen)
 
 # set LM parameters
-parameters=[len(wavelen), 10, 0, 
-            0.01, 15,
+parameters=[0.01, 15,
             0.01, 100,
             0.01, 5,]
 # use Boreali object to process the input image, keep the result in cpa

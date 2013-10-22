@@ -41,9 +41,9 @@ model = b.get_homodel()
 chls = [0.01, 0.05, 0.1, 0.5, 1, 5]
 
 # set LM parameters
-cpaLimits = [0.01, 15,
-             0.01, 5,
-             0.01, 10,]
+cpaLimits = [0.01, 5,
+             0.01, 2,
+             0.01, 1,]
 
 legendVals = []
 for chl in chls:
@@ -92,8 +92,8 @@ nCPA.export('test_cpa.nc')
 
 # generate PNG files with CPA spatial distribution and with RGB
 figParams = {'legend': True, 'LEGEND_HEIGHT': 0.5, 'NAME_LOCATION_Y': 0, 'mask_array': mask, 'mask_lut': {1: [255, 255, 255], 2:[128,128,128], 4:[200,200,255]}}
-nCPA.write_figure('test_chl.png', 'chl', clim=[0, 0.5], **figParams)
-nCPA.write_figure('test_tsm.png', 'tsm', clim=[0, 1], **figParams)
-nCPA.write_figure('test_doc.png', 'doc', clim=[0, .5], **figParams)
-nCPA.write_figure('test_mse.png', 'mse', clim=[1e-5, 1e-2], logarithm=True, **figParams)
+nCPA.write_figure('test_chl.png', 'chl', clim=[0, 1], **figParams)
+nCPA.write_figure('test_tsm.png', 'tsm', clim=[0, 2], **figParams)
+nCPA.write_figure('test_doc.png', 'doc', clim=[0, .2], **figParams)
+nCPA.write_figure('test_mse.png', 'mse', clim=[1e-5, 1e-3], logarithm=True, **figParams)
 n.write_figure('test_rgb.png', [9, 5, 1], clim=[[0, 0, 0], [0.006, 0.04, 0.024]], mask_array=mask, mask_lut={2:[128,128,128]})
