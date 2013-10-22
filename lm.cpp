@@ -107,7 +107,7 @@ int Hydrooptics :: set_params(double inTheta){
     return 0;
 }
 
-double Hydrooptics :: rrsw (double * c, int bn) const{
+double Hydrooptics :: rrsw (const double * c, int bn) const{
     // calculate Rrsw from given C, for a given band
     double a, bb, b, kd, r;
     
@@ -119,7 +119,7 @@ double Hydrooptics :: rrsw (double * c, int bn) const{
     return r;
 };
 
-double Hydrooptics :: rs (double * c, int bn) const{
+double Hydrooptics :: rs (const double * c, int bn) const{
     // calcucate cost function per band
     double rs;
 
@@ -132,7 +132,7 @@ double Hydrooptics :: rs (double * c, int bn) const{
     return rs;
 };
 
-double  Hydrooptics :: sse (double * c) const{
+double  Hydrooptics :: sse (const double * c) const{
     // calculate sum square error of all bands
     double sse = 0;
     int bn;
@@ -154,7 +154,7 @@ double Hydrooptics :: j_deep(double s,
     return (RW1*bb0)/(aWAT+a0*c0+a1*c1+a2*c2)-RW2*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,3.0)*pow(bbWAT+bb0*c0+bb1*c1+bb2*c2,2.0)*2.0-RW1*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)+RW2*bb0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)*2.0;
 };
 
-double Hydrooptics :: jacobian(double * c, int bn, int vn) const{
+double Hydrooptics :: jacobian(const double * c, int bn, int vn) const{
     // calcluate jacobian for a given concentration/band/variable
     
     int v0n[3] = { 0, 1, 2 };
@@ -195,16 +195,16 @@ double Hydrooptics :: jacobian(double * c, int bn, int vn) const{
     return j;
 };
 
-int startingCPA(double parameters[9], double * startC){
+int startingCPA(double parameters[6], double * startC){
     int ci0, ci1, ci2;
     double c0, c1, c2, dc0, dc1, dc2;
-    double starts = parameters[1];
+    double starts = 10;
     int k;
     int fullSize = starts * starts * starts;
     
-    double min0 = parameters[3], max0 = parameters[4];
-    double min1 = parameters[5], max1 = parameters[6];
-    double min2 = parameters[7], max2 = parameters[8];
+    double min0 = parameters[0], max0 = parameters[1];
+    double min1 = parameters[2], max1 = parameters[3];
+    double min2 = parameters[4], max2 = parameters[5];
     
     dc0 = (max0 - min0) / (starts - 1);
     dc1 = (max1 - min1) / (starts - 1);
@@ -232,8 +232,8 @@ int startingCPA(double parameters[9], double * startC){
 }
 
 //iterface to python
-//calculate Rrsw from given concentrations, albedo, depth, solar zenith
-extern int get_rrsw(double parameters[9],
+//calculate Rrsw from given concentrations, solar zenith
+extern int get_rrsw(
          double *model, int model_n0, int model_n1,
          double inC[3],
          double theta,
@@ -262,7 +262,7 @@ int compare (const void * v1, const void * v2)
     return d1<d2?-1:(d1>d2);
 }
 
-extern int get_c(double parameters[9],
+extern int get_c(double parameters[6],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
@@ -272,10 +272,8 @@ extern int get_c(double parameters[9],
     printf("Retrieval from %d bands x %d pixels (W/O ARMA)...\n", bands, pixels);
     
     //result of optimization
-    double xBest[6];
+    double xBest[4];
     
-    // number of results: 3 for input with albedo, 5 for input without albedo
-
     //init HO-object
     Hydrooptics ho(bands, model);
     
@@ -283,8 +281,11 @@ extern int get_c(double parameters[9],
     double sse[1000];
     double * ssep[1000];
     double startC[3000];
+    // number of all starting vecotrs
     int startCN = startingCPA(parameters, startC);
-
+    // number of best starting vecortrs
+    int startBestCN = 10;
+    
     //prepare for optimization with CMINPACK
     real x[5], fvec[10], fjac[30], tol, wa[300], fnorm;
     int info, ipvt[3], lwa = 100;
@@ -294,7 +295,7 @@ extern int get_c(double parameters[9],
     //for all pixels
     for (i = 0; i < pixels; i ++){
 
-        //set measured Rrsw, albedo, depth and solar zenith in the HO-object
+        //set measured Rrsw and solar zenith in the HO-object
         ho.set_params(inR + i*bands, theta[i]);
         
         //erase xBest
@@ -321,9 +322,8 @@ extern int get_c(double parameters[9],
         //sort SSE pointers
         qsort(ssep, startCN, sizeof *ssep, compare);
         
-        // start optimization from 5 best starting vectors
-        startCN = 10;
-        for (k = 0; k < startCN && xBest[3] > parameters[2]; k ++){
+        // start optimization from N best starting vectors
+        for (k = 0; k < startBestCN; k ++){
             //get index of the k-th best starting vector
             kBest = ssep[k]-sse;
             
@@ -374,18 +374,13 @@ int fcn(void *p, int m, int n, const real *x, real *fvec, real *fjac,
 
     int bn, i1;
     const Hydrooptics *ho = (Hydrooptics *)p;
-    double c[3];
     double rsval;
     
-    c[0] = x[0];
-    c[1] = x[1];
-    c[2] = x[2];
-
     if (iflag == 1){
 
         // calculate cost function
         for (bn = 0; bn < m; bn ++){
-            rsval = ho -> rs(c, bn);
+            rsval = ho -> rs(x, bn);
             fvec[bn] = rsval;
             //printf("fcn: fvec:%d %f\n", i0, fvec[i0]);
         };
@@ -396,9 +391,9 @@ int fcn(void *p, int m, int n, const real *x, real *fvec, real *fjac,
         //cout << j << endl;
         //calculate jacobians
         for (bn = 0; bn < m; bn ++){
-            fjac[bn + ldfjac*0] = ho->jacobian(c, bn, 0);
-            fjac[bn + ldfjac*1] = ho->jacobian(c, bn, 1);
-            fjac[bn + ldfjac*2] = ho->jacobian(c, bn, 2);
+            fjac[bn + ldfjac*0] = ho->jacobian(x, bn, 0);
+            fjac[bn + ldfjac*1] = ho->jacobian(x, bn, 1);
+            fjac[bn + ldfjac*2] = ho->jacobian(x, bn, 2);
             
             //printf("fcn: fjac:%d %f %f %f\n", i0, fjac[i0 + ldfjac*0], fjac[i0 + ldfjac*1], fjac[i0 + ldfjac*2]);
         };

@@ -30,15 +30,7 @@ from nansat import *
 
 # set forward model parameters: bands, albedo, depth, solar zenith angle
 wavelen = [413, 443, 490, 510, 560, 620, 665, 681, 709] # MERIS bands
-albedo = [0, 0, 0, 0, 0, 0, 0, 0, 0] # no bottom reflection
-h = -10 # boreali will not use bottom correction if h < 0
 theta = 0 # sun in zenith
-
-# set LM parameters
-parameters=[len(wavelen), 10, 0, 
-            0.01, 2,
-            0.01, 1,
-            0.01, 1,]
 
 # create Boreali object
 b = Boreali('michigan', wavelen)
@@ -47,14 +39,24 @@ model = b.get_homodel()
 
 # calculate and plot Rrsw for 6 values of CHL 
 chls = [0.01, 0.05, 0.1, 0.5, 1, 5]
+
+# set LM parameters
+cpaLimits = [0.01, 15,
+             0.01, 5,
+             0.01, 10,]
+
 legendVals = []
 for chl in chls:
     # call lm.get_rrsw to calculate Rrsw from input concentrations
-    r = lm.get_rrsw(parameters, model, [chl, 0.2, 0.01], theta, len(wavelen))[1]
+    r = lm.get_rrsw(model, [chl, 0.2, 0.01], theta, len(wavelen))[1]
     # plot R vs. wavelength
     plt.plot(wavelen, r, '.-')
     # add chl concentration to legends
     legendVals.append('%5.2f mg m-3' % chl)
+
+    # retrieve concentration vector from the last Rrsw
+    c = lm.get_c(cpaLimits, model, [r], [theta], 4)[1]
+    print 'chl=%5.2f, tsm=%5.2f, doc=%5.2f, rmse=%5.2f' % tuple(c)
 
 # add legend, lables, title and save the plot to PNG file
 plt.legend(legendVals)
@@ -64,9 +66,7 @@ plt.title('Rrsw spectra for various chl values')
 plt.savefig('test_rrsw.png')
 plt.close()
 
-# retrieve concentration vector from the last Rrsw
-c = lm.get_c(parameters, model, [r], [theta], 4)[1]
-print 'chl=%5.2f, tsm=%5.2f, doc=%5.2f, rmse=%5.2f' % tuple(c)
+
 
 # open test image (subimage of lake michigan)
 n = Nansat('test.tif')
@@ -76,7 +76,7 @@ d = Domain(4326, '-lle -88 42.5 -87.33 42.75 -ts 200 100')
 n.reproject(d)
 
 # use Boreali object to process the input image, keep the result in cpa
-cpa, mask = b.process(n, parameters, threads=2)
+cpa, mask = b.process(n, cpaLimits, threads=2)
 
 # create new Nansat object to store the results of retrieval
 nCPA = Nansat(domain=n)

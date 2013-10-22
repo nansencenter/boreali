@@ -40,11 +40,6 @@ class Hydrooptics {
     // water refraction index
     static const double NW = 1.33333;
     
-    //parameters for albedo approximation
-    static const double G1 = 555;   //peak center
-    static const double G2 = 40;    //peak width
-    static const double L0 = -0.06; //line 0
-
     int bands;
     
     double * aaw;
@@ -73,32 +68,32 @@ class Hydrooptics {
     //set hydro-optical model in the object
     int set_model(double * model);
     
-    //set hydo-optical conditions: reflectance, albedo, depth, solar zenith
+    //set hydo-optical conditions: reflectance, solar zenith
     int set_params(double inTheta);
 
-    //set hydo-optical conditions: reflectance, albedo, depth, solar zenith
+    //set hydo-optical conditions: reflectance, solar zenith
     int set_params(double * inS, double inTheta);
 
     //caluclate Subsurface remote sensing refectance (Rrsw) from given C
     //for deep waters
-    //Other parameters (model, albedo, depth, sola zenith) are defined
+    //Other parameters (model, solar zenith) are defined
     //in the object (at initialization)
     //Returns vector for the entrie spectrum
-    double rrsw (double * c, int bn) const;
+    double rrsw (const double * c, int bn) const;
 
     //Calcualte cost function: difference between measured and
     //reconstructed R for given C
     //Returns vector for the entrie spectrum
-    double rs (double * c, int bn) const;
+    double rs (const double * c, int bn) const;
 
     //Calcualte sum square error: sum pf squared cost function for all bands
     //reconstructed R for given C
-    double sse (double * c) const;
+    double sse (const double * c) const;
 
     //Calculate Jacobian of the cost function:
     //partial derivative of the cost function by each concentration
     //Returns vector for the entrie spectrum
-    double jacobian(double * c, int bn, int vn) const;
+    double jacobian(const double * c, int bn, int vn) const;
 
     //Calculate Jacobian of the cost function for deep waters
     //Returns single value at one wavelength
