@@ -108,17 +108,6 @@ class Hydrooptics {
                 double bb0, double bb1, double bb2,
                 double b0, double b1, double b2,
                 double aWAT, double bbWAT, double bWAT) const;
-
-    //Calculate Jacobian of the cost function with additional variable: albedo
-    //Returns single value of derivative on ALR (albedo ratio) at one wavelength
-    double j_shallow_al2(double s,
-                double c0, double c1, double c2,
-                double a0, double a1, double a2,
-                double bb0, double bb1, double bb2,
-                double b0, double b1, double b2,
-                double aWAT, double bbWAT, double bWAT,
-                double al1, double al2, double ll) const;
-
 };
 
 int startingCPA(double * parameters, double * startC);

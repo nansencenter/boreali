@@ -50,7 +50,7 @@ chls = [0.01, 0.05, 0.1, 0.5, 1, 5]
 legendVals = []
 for chl in chls:
     # call lm.get_rrsw to calculate Rrsw from input concentrations
-    r = lm.get_rrsw(parameters, model, [chl, 0.2, 0.01], albedo, h, theta, len(wavelen))[1]
+    r = lm.get_rrsw(parameters, model, [chl, 0.2, 0.01], theta, len(wavelen))[1]
     # plot R vs. wavelength
     plt.plot(wavelen, r, '.-')
     # add chl concentration to legends
@@ -65,7 +65,7 @@ plt.savefig('test_rrsw.png')
 plt.close()
 
 # retrieve concentration vector from the last Rrsw
-c = lm.get_c(parameters, model, [r], [albedo], [h], [theta], 4)[1]
+c = lm.get_c(parameters, model, [r], [theta], 4)[1]
 print 'chl=%5.2f, tsm=%5.2f, doc=%5.2f, rmse=%5.2f' % tuple(c)
 
 # open test image (subimage of lake michigan)

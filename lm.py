@@ -72,17 +72,9 @@ def get_rrsw(*args):
   return _lm.get_rrsw(*args)
 get_rrsw = _lm.get_rrsw
 
-def get_rrsw_al(*args):
-  return _lm.get_rrsw_al(*args)
-get_rrsw_al = _lm.get_rrsw_al
-
 def get_c(*args):
   return _lm.get_c(*args)
 get_c = _lm.get_c
-
-def get_c_al(*args):
-  return _lm.get_c_al(*args)
-get_c_al = _lm.get_c_al
 # This file is compatible with both classic and new-style classes.
 
 
