@@ -25,7 +25,6 @@ class Boreali():
         Read albedos for given wavelengths
         '''
         self.homo = self.read_ho_models('models.txt', model)
-        self.set_albedos()
         self.wavelen = wavelen
     
     def read_ho_models(self, hoFileName='', iModelName='ladoga'):
@@ -86,46 +85,6 @@ class Boreali():
 
         return hoModelInterp
 
-    def set_albedos(self):
-        '''Set spectra of albedos
-        
-        Spectra of albedos are kept in this method in a tring. Albedo
-        values are read from string and a list of interpolators
-        which relate wavelengths and albed is created for each bottom 
-         
-        Modifies:
-        ---------
-        self.albedos : list of interpolation functions for each albedo
-        self.albedoName : names of albedos
-        '''
-        
-        albedoString = '''
-        lambda	400	425	450	475	500	525	550	575	600	625	650	675	700	725	750
-        sand	0.11	0.13	0.15	0.165	0.183	0.196	0.209	0.222	0.235	0.248	0.261	0.274	0.287	0.3	0.31
-        sargassum	0.02	0.02	0.02	0.02	0.02	0.03	0.04	0.06	0.07	0.05	0.05	0.02	0.15	0.31	0.35
-        silt	0.05	0.065	0.08	0.095	0.11	0.125	0.14	0.155	0.17	0.175	0.18	0.185	0.19	0.195	0.2
-        boodlea	0.05	0.05	0.06	0.07	0.11	0.25	0.28	0.25	0.22	0.19	0.15	0.08	0.25	0.43	0.45
-        limestone	0.065	0.075	0.09	0.1	0.115	0.13	0.14	0.15	0.145	0.14	0.14	0.125	0.135	0.1	0.07
-        enteromorpha	0.05	0.05	0.05	0.05	0.07	0.135	0.165	0.155	0.145	0.13	0.1	0.075	0.22	0.3	0.31
-        cladophora	0.05	0.05	0.05	0.05	0.07	0.135	0.165	0.155	0.145	0.13	0.1	0.075	0.14	0.175	0.18
-        chara	0.015	0.015	0.015	0.015	0.015	0.04	0.05	0.04	0.035	0.03	0.025	0.02	0.05	0.14	0.16
-        '''
-        
-        albedoLines = albedoString.splitlines()
-        albedoNames = []
-        x = np.array(map(float, albedoLines[1].strip().split('\t')[1:]))
-        albedos = []
-        for awi in range(2, len(albedoLines)):
-            awiList = albedoLines[awi].strip().split('\t')
-            albedoNames.append(awiList[0])
-            y = np.array(map(float, awiList[1:]))
-            if len(y) == len(x):
-                albedos.append(interpolate.interp1d(x, y))
-        
-        self.albedos = albedos
-        self.albedoNames = albedoNames
-
-
     def get_homodel(self):
         '''Get matrix with hydro-optical model for curent wavelength
         
@@ -144,30 +103,6 @@ class Boreali():
             abCoef.append(self.homo[i](self.wavelen))
         
         return abCoef
-
-    def get_albedo(self, bottom):
-        '''Get matrix with albedos for each input pixel
-        
-        Each albedo spectrum is calculated from albedo interpolators
-        using the current wavelengths and input index of bottom type   
-        
-        Parameters:
-        -----------
-        bottom : numpy 1D integer matrix
-            array with indeces of bottom types
-            
-        Returns:
-        ---------
-        Numpy 2d matrix: matrix with albedo spectra for each input index
-        '''
-        
-        #import pdb; pdb.set_trace()
-        albedo = np.zeros((len(bottom), len(self.wavelen)))
-        uniqBottom = np.unique(bottom)
-        for ubt in uniqBottom:
-            albedo[bottom == ubt] = self.albedos[ubt](self.wavelen) 
-            
-        return albedo
 
     def get_wavelengths(self, img, opts, wavelen=None):
         '''Return list of wavelengths from the available bands in img
@@ -265,7 +200,7 @@ class Boreali():
         return rrsw[:, mask.flat == 64], mask
     
     def get_c(self, opts, abCoef,
-                    rrsw, albedo, depth, theta,
+                    rrsw, theta,
                     values):
         '''Retrieve CPA concentrations from Rrsw spectra using LM-optimization
         
@@ -280,25 +215,18 @@ class Boreali():
             each wavelength
         rrsw : numpy 2D array
             Rrsw spectra
-        albedo : numpy 2D array
-            bottom albedo spectra 
-        depth : Numpy 1D array
-            Bathymetry of each pixel. If negative - shallow water
-            retrieval is not applied
         theta : Numpy 1D array
             Sun zenith angle in each pixel.
         values : list
             container of output results
         '''
         valuesLen = len(values)
-        c = lm.get_c(opts, abCoef, rrsw, albedo, depth, theta, valuesLen)[1]
+        c = lm.get_c(opts, abCoef, rrsw, theta, valuesLen)[1]
         values[:] = c
         
 
     def process(self, img, opts,
                     mask=None,
-                    depth=None,
-                    bottom=None,
                     theta=None,
                     flexible=True,
                     threads=1):
@@ -322,12 +250,6 @@ class Boreali():
             Nansat L2 mask with values 0, 1, 2, 64 meaning:
             out_of_swath, cloud, land, valid_pixel
             If None, all pixels are considered valid
-        depth : Numpy 2D array (same shape as img)
-            Bathymetry of the ROI. If none - shallow water retrieval is not applied
-        bottom : Numpy 2D array (same shape as img)
-            Type of bottom cover. Matrix with integer values of index of
-            bottom type. See Boreali.get_albedo()
-            If None, sand bottom is assumed
         theta : Numpy 2D array (same shape as img)
             Sun zenith angle in each pixel. If None sun is in nadir
         flexible : Boolean
@@ -371,18 +293,6 @@ class Boreali():
         rrsw = rrsw.T
         pixels = rrsw.shape[0]
 
-        # get bathymetry in valid pixels (or assume deep waters)
-        if depth is None:
-            depth = np.zeros(img.shape()) - 10
-        #plt.imshow(depth);plt.title('depth');plt.colorbar();plt.show()
-        depth = depth[mask == 64]
-
-        # get albedo for valid pixels (or assume sand bottom)
-        if bottom is None:
-            bottom = np.zeros(img.shape(), 'uint8')
-        #plt.imshow(bottom);plt.title('bottom');plt.colorbar();plt.show()
-        albedo = self.get_albedo(bottom[mask == 64])
-
         # get solar zenith of valid pixels (or assume sun in zenith)
         if theta is None:
             theta = np.zeros(img.shape())
@@ -412,17 +322,15 @@ class Boreali():
             procPixels = thIndex[thn][1] - thIndex[thn][0]
             # allocate memory to store results of rerieval from submatrix
             cVals.append(Array('d', range(procPixels*4)))
-            # subset rrsw, albedo, depth and theta
+            # subset rrsw and theta
             r = rrsw[thIndex[thn][0]:thIndex[thn][1], :]
-            a = albedo[thIndex[thn][0]:thIndex[thn][1], :]
-            h = depth[thIndex[thn][0]:thIndex[thn][1]]
             t = theta[thIndex[thn][0]:thIndex[thn][1]]
             # create new subprocess args are:
             # name of func to retrieve CPA and
             # arguments for tht func
             procs.append(Process(target=self.get_c,
                                         args=(opts, abCoef,
-                                                r, a, h, t,
+                                                r, t,
                                                 cVals[thn])))
             # launch sub-process
             procs[thn].start()
