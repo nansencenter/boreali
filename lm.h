@@ -5,17 +5,10 @@
 #include <stdio.h>
 #include <iostream>
 
-//include Armadillo: C++ linear algebra library 
-//http://arma.sourceforge.net/
-//#include <armadillo>
-
 //include CMINPACK for Levenberg-Marquardt optimization
-//http://devernay.free.fr/hacks/cminpack/index.html
 #include <cminpack.h>
-#define real __cminpack_real__
 
 using namespace std;
-//using namespace arma;
 
 class Hydrooptics {
     /* Class contais definitions of all hydrooptial equations for 
@@ -77,11 +70,14 @@ class Hydrooptics {
     //set hydro-optical model in the object
     int set_model(double * model);
     
+    //set hydo-optical conditions: albedo, depth, solar zenith
+    int set_params(double * inAL, double inH, double inTheta);
+
     //set hydo-optical conditions: reflectance, albedo, depth, solar zenith
     int set_params(double * inS, double * inAL, double inH, double inTheta);
-
+    
     //set hydo-optical conditions: reflectance, depth, solar zenith
-    int set_params(double * inS, double inH, double inTheta);
+    //int set_params(double * inS, double inH, double inTheta);
     
     //albedo approximation
     double albedo(double al1, double al2);
@@ -91,7 +87,7 @@ class Hydrooptics {
     //Other parameters (model, albedo, depth, sola zenith) are defined
     //in the object (at initialization)
     //Returns vector for the entrie spectrum
-    double rrsw (double * c, int bn) const;
+    double rrsw (const double * c, int bn) const;
 
     //caluclate Subsurface remote sensing refectance (Rrsw) from given C
     //and given ALR
@@ -104,12 +100,12 @@ class Hydrooptics {
     //Calcualte cost function: difference between measured and
     //reconstructed R for given C
     //Returns vector for the entrie spectrum
-    double rs (double * c, int bn) const;
+    double rs (const double * c, int bn) const;
 
 
     //Calcualte sum square error: sum pf squared cost function for all bands
     //reconstructed R for given C
-    double sse (double * c) const;
+    double sse (const double * c) const;
 
     //Calcualte cost function: difference between measured and
     //reconstructed R for given C and ALR
@@ -119,7 +115,7 @@ class Hydrooptics {
     //Calculate Jacobian of the cost function:
     //partial derivative of the cost function by each concentration
     //Returns vector for the entrie spectrum
-    double jacobian(double * c, int bn, int vn) const;
+    double jacobian(const double * c, int bn, int vn) const;
 
     //Calculate Jacobian of the cost function:
     //partial derivative of the cost function by each concentration and albedo
@@ -179,10 +175,10 @@ class Hydrooptics {
 int startingCPA(double * parameters, double * startC);
 
 //Interface for the LM-optimization library
-int fcn(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
+int fcn(void *p, int m, int n, const double *x, double *fvec, double *fjac, 
 	 int ldfjac, int iflag);
 
 
 //Interface for the LM-optimization library
-//int fcn_al(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
+//int fcn_al(void *p, int m, int n, const double *x, double *fvec, double *fjac, 
 //	 int ldfjac, int iflag);

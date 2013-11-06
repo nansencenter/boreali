@@ -5,18 +5,10 @@
 #include <stdio.h>
 #include <iostream>
 
-//include Armadillo: C++ linear algebra library 
-//http://arma.sourceforge.net/
-//#include <armadillo>
-
 //include CMINPACK for Levenberg-Marquardt optimization
-//http://devernay.free.fr/hacks/cminpack/index.html
 #include <cminpack.h>
-//#define real __cminpack_real__
-#define real long double
 
 using namespace std;
-//using namespace arma;
 
 #include "lm.h"
 
@@ -101,6 +93,7 @@ int Hydrooptics :: set_model(double * model){
 
 int Hydrooptics :: set_params(double * inS, double * inAL, double inH, double inTheta){
     //set hydro-optical conditions
+    //used when calculating C
     int bn;
     
     for (bn = 0; bn < bands; bn ++){
@@ -109,7 +102,15 @@ int Hydrooptics :: set_params(double * inS, double * inAL, double inH, double in
         // albedo
         al[bn] = inAL[bn];
     }
+    
+    set_params(inAL, inH, inTheta);
+}
 
+int Hydrooptics :: set_params(double * inAL, double inH, double inTheta){
+    //set hydro-optical conditions
+    //used when calculating Rrsw
+    int bn;
+    
     // depth
     h = inH;
     // sun zenith
@@ -142,7 +143,7 @@ mat Hydrooptics :: albedo(double al1, double al2) const{
 }
 */
 
-double Hydrooptics :: rrsw (double * c, int bn) const{
+double Hydrooptics :: rrsw (const double * c, int bn) const{
     // calculate Rrsw from given C, for a given band
     double a, bb, b, kd, r;
     
@@ -193,7 +194,7 @@ mat Hydrooptics :: rrsw (mat c, double al1, double al2) const{
 };
 */
 
-double Hydrooptics :: rs (double * c, int bn) const{
+double Hydrooptics :: rs (const double * c, int bn) const{
     // calcucate cost function per band
     double rs;
 
@@ -206,7 +207,7 @@ double Hydrooptics :: rs (double * c, int bn) const{
     return rs;
 };
 
-double  Hydrooptics :: sse (double * c) const{
+double  Hydrooptics :: sse (const double * c) const{
     // calculate sum square error of all bands
     double sse = 0;
     int bn;
@@ -307,7 +308,7 @@ double Hydrooptics :: j_shallow_al2(double s,
     return (ll*exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)*(1.0/2.0E3))/qf;
 };
 
-double Hydrooptics :: jacobian(double * c, int bn, int vn) const{
+double Hydrooptics :: jacobian(const double * c, int bn, int vn) const{
     // calcluate jacobian for a given concentration/band/variable
     
     int v0n[3] = { 0, 1, 2 };
@@ -448,16 +449,16 @@ mat Hydrooptics :: jacobian(mat c, double al1, double al2) const{
 }
 */
 
-int startingCPA(double parameters[9], double * startC){
+int startingCPA(double parameters[6], double * startC){
     int ci0, ci1, ci2;
     double c0, c1, c2, dc0, dc1, dc2;
-    double starts = parameters[1];
+    double starts = 10.;
     int k;
     int fullSize = starts * starts * starts;
     
-    double min0 = parameters[3], max0 = parameters[4];
-    double min1 = parameters[5], max1 = parameters[6];
-    double min2 = parameters[7], max2 = parameters[8];
+    double min0 = parameters[0], max0 = parameters[1];
+    double min1 = parameters[2], max1 = parameters[3];
+    double min2 = parameters[4], max2 = parameters[5];
     
     dc0 = (max0 - min0) / (starts - 1);
     dc1 = (max1 - min1) / (starts - 1);
@@ -540,7 +541,7 @@ mat startingCPA_al(double parameters[9], mat m){
 
 //iterface to python
 //calculate Rrsw from given concentrations, albedo, depth, solar zenith
-extern int get_rrsw(double parameters[9],
+extern int get_rrsw(
          double *model, int model_n0, int model_n1,
          double inC[3],
          double *albedo, int albedo_n0,
@@ -553,7 +554,7 @@ extern int get_rrsw(double parameters[9],
     //init HO-object
     Hydrooptics ho(outR_n0, model);
     //set ho-conditions
-    ho.set_params(albedo, albedo, h, theta);
+    ho.set_params(albedo, h, theta);
 
     for (bn = 0; bn < outR_n0; bn ++){
         //use HO-object for estimation of Rrsw
@@ -566,7 +567,7 @@ extern int get_rrsw(double parameters[9],
 
 //iterface to python
 //calculate Rrsw from given concentrations, albedo, depth, sola zenith
-extern int get_rrsw_al(double parameters[9],
+extern int get_rrsw_al(
          double *model, int model_n0, int model_n1,
          double inC[3],
          double *lambda, int lambda_n0,
@@ -629,13 +630,16 @@ int compare (const void * v1, const void * v2)
     return d1<d2?-1:(d1>d2);
 }
 
-extern int get_c(double parameters[9],
+extern int get_c(double parameters[6],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *albedo, int albedo_rows, int albedo_cols,
          double *h, int h_rows,
          double *theta, int theta_rows,
          double *outC, int outC_length){
+
+    bool log1 = false;
+    bool log2 = false;
 
     int bn, i, j, k, kBest, bands = inR_cols, pixels = inR_rows;
     printf("Retrieval from %d bands x %d pixels (W/O ARMA)...\n", bands, pixels);
@@ -652,13 +656,16 @@ extern int get_c(double parameters[9],
     double sse[1000];
     double * ssep[1000];
     double startC[3000];
+    // number of all starting vecotrs
     int startCN = startingCPA(parameters, startC);
+    // number of best starting vecortrs
+    int startBestCN = 10;
 
     //prepare for optimization with CMINPACK
-    real x[5], fvec[10], fjac[30], tol, wa[300], fnorm;
+    double x[5], fvec[10], fjac[30], tol, wa[300], fnorm;
     int info, ipvt[3], lwa = 100;
     //set tolerance to square of the machine recision
-    tol = sqrt(__cminpack_func__(dpmpar)(1));
+    tol = sqrt(dpmpar(1));
 
     //for all pixels
     for (i = 0; i < pixels; i ++){
@@ -675,43 +682,44 @@ extern int get_c(double parameters[9],
         for (k = 0; k < startCN; k ++){
             
             // set initial concentrations
-            //printf("start [%d]: ", k);
+            if (log1 and log2) printf("start [%d]: ", k);
             for (j = 0; j < 3; j ++){
                 x[j] = startC[k * 3 + j];
-                //printf("%5.2g ", (double)x[j]);
+                if (log1 and log2) printf("%5.2g ", (double)x[j]);
             };
             
             // keep SSE and pointer to SSE
             sse[k] = ho.sse(x);
             ssep[k] = &sse[k];
-            //printf("orig: %d %f %u\n", k, sse[k], ssep[k]);
+            if (log1 and log2) printf("orig: %d %f %u\n", k, sse[k], ssep[k]);
         }
         
         //sort SSE pointers
         qsort(ssep, startCN, sizeof *ssep, compare);
         
         // start optimization from 5 best starting vectors
-        startCN = 10;
-        for (k = 0; k < startCN && xBest[3] > parameters[2]; k ++){
+        for (k = 0; k < startBestCN; k ++){
             //get index of the k-th best starting vector
             kBest = ssep[k]-sse;
             
             // set initial concentrations
-            //printf("start [%d]: ", kBest);
+            if (log1) printf("start [%d / %d]: ", k, kBest);
             for (j = 0; j < 3; j ++){
                 x[j] = startC[kBest * 3 + j];
-                //printf("%5.2g ", (double)x[j]);
+                if (log1) printf("%5.2g ", (double)x[j]);
             };
 
             //perform optimization
-            info = __cminpack_func__(lmder1)(fcn, &ho, bands, 3, x, fvec, fjac, bands, tol, ipvt, wa, lwa);
+            info = lmder1(fcn, &ho, bands, 3, x, fvec, fjac, bands, tol, ipvt, wa, lwa);
             //estimate norm of residuals
-            fnorm = __cminpack_func__(enorm)(bands, fvec);
+            fnorm = enorm(bands, fvec);
     
-            //printf(" ==> ");
-            //for (j = 0; j < 3; j ++)
-            //    printf("%5.2g ", (double)x[j]);
-            //printf("%7.4g\n", (double)fnorm);
+            if (log1) {
+                printf(" ==> ");
+                for (j = 0; j < 3; j ++)
+                    printf("%5.2g ", (double)x[j]);
+                printf("%7.4g\n", (double)fnorm);
+            }
             
             if (fnorm < xBest[3]){
                 for (j = 0; j < 3; j ++)
@@ -721,15 +729,15 @@ extern int get_c(double parameters[9],
         }
         
         //sent values of concentrtions and residuals back to Python
-        //printf("final result: %d ", i);
+        if (log1) printf("final result: %d ", i);
         for (j = 0; j < 4; j ++){
-            //printf("%g ", xBest[j]);
+            if (log1) printf("%g ", xBest[j]);
             outC[j + i*4] = xBest[j];
         }
-        //printf("\n");
+        if (log1) printf("\n");
 
         if (fmod(i, 100.) == 0.)
-            printf("%d\n", i);
+            printf("%d / %f \n", i, (double)(i) / (double)(pixels));
     }
 
     printf("OK!\n");
@@ -738,7 +746,7 @@ extern int get_c(double parameters[9],
 };
 
 
-extern int get_c_al(double parameters[9],
+extern int get_c_al(double parameters[6],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *lambda, int lambda_cols,
@@ -860,23 +868,18 @@ extern int get_c_al(double parameters[9],
 };
 */
 
-int fcn(void *p, int m, int n, const real *x, real *fvec, real *fjac, 
+int fcn(void *p, int m, int n, const double *x, double *fvec, double *fjac, 
 	 int ldfjac, int iflag){
 
     int bn, i1;
     const Hydrooptics *ho = (Hydrooptics *)p;
-    double c[3];
     double rsval;
     
-    c[0] = x[0];
-    c[1] = x[1];
-    c[2] = x[2];
-
     if (iflag == 1){
 
         // calculate cost function
         for (bn = 0; bn < m; bn ++){
-            rsval = ho -> rs(c, bn);
+            rsval = ho -> rs(x, bn);
             fvec[bn] = rsval;
             //printf("fcn: fvec:%d %f\n", i0, fvec[i0]);
         };
@@ -887,9 +890,9 @@ int fcn(void *p, int m, int n, const real *x, real *fvec, real *fjac,
         //cout << j << endl;
         //calculate jacobians
         for (bn = 0; bn < m; bn ++){
-            fjac[bn + ldfjac*0] = ho->jacobian(c, bn, 0);
-            fjac[bn + ldfjac*1] = ho->jacobian(c, bn, 1);
-            fjac[bn + ldfjac*2] = ho->jacobian(c, bn, 2);
+            fjac[bn + ldfjac*0] = ho->jacobian(x, bn, 0);
+            fjac[bn + ldfjac*1] = ho->jacobian(x, bn, 1);
+            fjac[bn + ldfjac*2] = ho->jacobian(x, bn, 2);
             
             //printf("fcn: fjac:%d %f %f %f\n", i0, fjac[i0 + ldfjac*0], fjac[i0 + ldfjac*1], fjac[i0 + ldfjac*2]);
         };

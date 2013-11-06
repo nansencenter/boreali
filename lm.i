@@ -2,7 +2,7 @@
 %{
 /* Put header files here or function declarations like below */
 
-extern int get_rrsw(double parameters[9],
+extern int get_rrsw(
          double *model, int model_n0, int model_n1,
          double inC[3],
          double *albedo, int albedo_n0,
@@ -10,7 +10,7 @@ extern int get_rrsw(double parameters[9],
          double theta,
          double *outR, int outR_n0);
 
-extern int get_rrsw_al(double parameters[9],
+extern int get_rrsw_al(
          double *model, int model_n0, int model_n1,
          double inC[3],
          double *lambda, int lambda_n0,
@@ -20,7 +20,7 @@ extern int get_rrsw_al(double parameters[9],
          double al2,
          double *outR, int outR_n0);
 
-extern int get_c(double parameters[9],
+extern int get_c(double parameters[6],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *albedo, int albedo_rows, int albedo_cols,
@@ -28,7 +28,7 @@ extern int get_c(double parameters[9],
          double *theta, int theta_rows,
          double *outC, int outC_length);
 
-extern int get_c_al(double parameters[9],
+extern int get_c_al(double parameters[6],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *lambda, int lambda_n0,
@@ -47,7 +47,7 @@ extern int get_c_al(double parameters[9],
 %}
 
 %apply (double IN_ARRAY1[ANY]) {
-    (double parameters[9]),
+    (double parameters[6]),
     (double inC[3])
 };
 
@@ -70,7 +70,7 @@ extern int get_c_al(double parameters[9],
     (double *outC, int outC_length)
 };
 
-extern int get_rrsw(double parameters[9],
+extern int get_rrsw(
          double *model, int model_n0, int model_n1,
          double inC[3],
          double *albedo, int albedo_n0,
@@ -78,7 +78,7 @@ extern int get_rrsw(double parameters[9],
          double theta,
          double *outR, int outR_n0);
 
-extern int get_rrsw_al(double parameters[9],
+extern int get_rrsw_al(
          double *model, int model_n0, int model_n1,
          double inC[3],
          double *lambda, int lambda_n0,
@@ -88,7 +88,7 @@ extern int get_rrsw_al(double parameters[9],
          double al2,
          double *outR, int outR_n0);
 
-extern int get_c(double parameters[9],
+extern int get_c(double parameters[6],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *albedo, int albedo_rows, int albedo_cols,
@@ -96,7 +96,7 @@ extern int get_c(double parameters[9],
          double *theta, int theta_rows,
          double *outC, int outC_length);
 
-extern int get_c_al(double parameters[9],
+extern int get_c_al(double parameters[6],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *lambda, int lambda_n0,
