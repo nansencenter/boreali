@@ -14,7 +14,7 @@ from nansat import Domain, Nansat, Figure
 
 class OBPGL2Image(Nansat):
 
-    def l2c_mask(self, cloudBits, landBits=[2], tmpProdName='latitude', invalidTmp=-999, flagsName='flags'):
+    def l2c_mask(self, cloudBits=[10], landBits=[2], tmpProdName='latitude', invalidTmp=-999, flagsName='flags'):
         '''Create l2c_flags:
         Flag coding:
         1 - cloud   (value = 1)
