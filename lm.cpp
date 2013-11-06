@@ -199,8 +199,7 @@ double Hydrooptics :: rs (const double * c, int bn) const{
     double rs;
 
     rs = rrsw(c, bn) - s[bn];
-    //maybe rs ^ 2 ?
-    
+
     if (c[0] < 0 || c[1] < 0 || c[2] < 0)
         rs = 100;
 
@@ -213,7 +212,7 @@ double  Hydrooptics :: sse (const double * c) const{
     int bn;
 
     for (bn = 0; bn < bands; bn ++)
-        sse += pow(rs(c, bn),2);
+        sse += pow(rs(c, bn), 2);
 
     return sse;
 };
@@ -564,7 +563,6 @@ extern int get_rrsw(
     return 0;
 };
 
-
 //iterface to python
 //calculate Rrsw from given concentrations, albedo, depth, sola zenith
 extern int get_rrsw_al(
@@ -622,6 +620,8 @@ extern int get_rrsw_al(
     return 0;
 };
 */
+
+// compare values of two pointers (used for sorting starting vectors)
 int compare (const void * v1, const void * v2)
 {
     const double d1 = **(const double **)v1;
@@ -630,6 +630,8 @@ int compare (const void * v1, const void * v2)
     return d1<d2?-1:(d1>d2);
 }
 
+//iterface to python
+//calculate C from given Rrsw, albedo, depth, solar zenith
 extern int get_c(double parameters[6],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
