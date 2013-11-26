@@ -68,21 +68,29 @@ except AttributeError:
 
 
 
-def get_rrsw(*args):
-  return _lm.get_rrsw(*args)
-get_rrsw = _lm.get_rrsw
+def get_rrsw_deep(*args):
+  return _lm.get_rrsw_deep(*args)
+get_rrsw_deep = _lm.get_rrsw_deep
 
-def get_rrsw_al(*args):
-  return _lm.get_rrsw_al(*args)
-get_rrsw_al = _lm.get_rrsw_al
+def get_rrsw_shal(*args):
+  return _lm.get_rrsw_shal(*args)
+get_rrsw_shal = _lm.get_rrsw_shal
 
-def get_c(*args):
-  return _lm.get_c(*args)
-get_c = _lm.get_c
+def get_rrsw_albe(*args):
+  return _lm.get_rrsw_albe(*args)
+get_rrsw_albe = _lm.get_rrsw_albe
 
-def get_c_al(*args):
-  return _lm.get_c_al(*args)
-get_c_al = _lm.get_c_al
+def get_c_deep(*args):
+  return _lm.get_c_deep(*args)
+get_c_deep = _lm.get_c_deep
+
+def get_c_shal(*args):
+  return _lm.get_c_shal(*args)
+get_c_shal = _lm.get_c_shal
+
+def get_c_albe(*args):
+  return _lm.get_c_albe(*args)
+get_c_albe = _lm.get_c_albe
 # This file is compatible with both classic and new-style classes.
 
 

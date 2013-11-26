@@ -17,7 +17,7 @@ cCombinations = [
         'CHL dominated: CHL=1 ug l-1, TSM=0.01 mg l-1, DOC=0.01 mgC l-1',
     ],
     [
-        'h_on_depth_tsw.png',
+        'h_on_depth_tsm.png',
         [0.01, 0.5, 0.01],
         'TSM dominated: CHL=0.01 ug l-1, TSM=0.5 mg l-1, DOC=0.01 mgC l-1',
     ],
@@ -32,7 +32,7 @@ for cComb in cCombinations:
     plt.close()
     legendVals = []
     for h in range(1, 30, 4):
-        r = lm.get_rrsw(parameters, model, cComb[1], albedo, h, theta, 6)[1]
+        r = lm.get_rrsw_deep(model, cComb[1], theta, len(wavelen))[1]
         plt.plot(wavelen, r, 'o-')
         legendVals.append('%02d m' % h)
     plt.legend(legendVals)
