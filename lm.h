@@ -60,22 +60,22 @@ class Hydrooptics {
     int set_model(double * model);
     
     //set hydo-optical conditions: solar zenith
-    int set_params(double inTheta);
+    int set_theta(double inTheta);
 
     //set hydo-optical conditions: reflectance, solar zenith
-    int set_params(double * inS, double inTheta);
+    int set_s(double * inS);
     
     //caluclate Subsurface remote sensing refectance (Rrsw) from given C
     //for deep waters
     //Other parameters (model, albedo, depth, sola zenith) are defined
     //in the object (at initialization)
     //Returns vector for the entrie spectrum
-    double rrsw (const double * c, int bn) const;
+    virtual double rrsw (const double * c, int bn) const;
 
     //Calcualte cost function: difference between measured and
     //reconstructed R for given C
     //Returns vector for the entrie spectrum
-    double rs (const double * c, int bn) const;
+    virtual double rs (const double * c, int bn) const;
 
     //Calcualte sum square error: sum pf squared cost function for all bands
     //reconstructed R for given C
@@ -88,12 +88,14 @@ class Hydrooptics {
 
     //Calculate Jacobian of the cost function for deep waters
     //Returns single value at one wavelength
-    double j(int bn, double s,
-             double c0, double c1, double c2,
-             double a0, double a1, double a2,
-             double bb0, double bb1, double bb2,
-             double b0, double b1, double b2,
-             double aWAT, double bbWAT, double bWAT) const;
+    virtual double j(int bn, double s,
+                     double c0, double c1, double c2,
+                     double a0, double a1, double a2,
+                     double bb0, double bb1, double bb2,
+                     double b0, double b1, double b2,
+                     double aWAT, double bbWAT, double bWAT) const;
+    
+    int retrieve(int startCN, double * startC, double * xBest);
 };
 
 
@@ -119,30 +121,27 @@ class HydroopticsShallow : public Hydrooptics {
     //Clean memory from model
     ~HydroopticsShallow();
 
-    //set hydo-optical conditions: albedo, depth, solar zenith
-    int set_params(double * inAL, double inH, double inTheta);
+    //set hydo-optical conditions: albedo
+    int set_albedo(double * inAL);
 
-    //set hydo-optical conditions: reflectance, albedo, depth, solar zenith
-    int set_params(double * inS, double * inAL, double inH, double inTheta);
-    
     //caluclate Subsurface remote sensing refectance (Rrsw) from given C
     //for deep waters
     //Other parameters (model, albedo, depth, sola zenith) are defined
     //in the object (at initialization)
     //Returns vector for the entrie spectrum
-    double rrsw (const double * c, int bn) const;
+    virtual double rrsw (const double * c, int bn) const;
 
 
     //Calculate Jacobian of the cost function for shallow waters
     //Returns single value at one wavelength
-    double j(int bn, double s,
-             double c0, double c1, double c2,
-             double a0, double a1, double a2,
-             double bb0, double bb1, double bb2,
-             double b0, double b1, double b2,
-             double aWAT, double bbWAT, double bWAT,
-             double al) const;
-
+    virtual double j(int bn, double s,
+                     double c0, double c1, double c2,
+                     double a0, double a1, double a2,
+                     double bb0, double bb1, double bb2,
+                     double b0, double b1, double b2,
+                     double aWAT, double bbWAT, double bWAT,
+                     double al) const;
+    
 };
 
 class HydroopticsAlbedo : public HydroopticsShallow {
@@ -169,12 +168,6 @@ class HydroopticsAlbedo : public HydroopticsShallow {
     //Clean memory from model
     ~HydroopticsAlbedo();
 
-    //set hydo-optical conditions: depth, solar zenith
-    int set_params(double inH, double inTheta);
-
-    //set hydo-optical conditions: reflectance, albedo, depth, solar zenith
-    int set_params(double * inS, double inH, double inTheta);
-    
     //albedo approximation
     double albedo(double al1, double al2, int bn) const;
 
@@ -183,22 +176,22 @@ class HydroopticsAlbedo : public HydroopticsShallow {
     //Other parameters (model, albedo, depth, sola zenith) are defined
     //in the object (at initialization)
     //Returns vector for the entrie spectrum
-    double rrsw (const double * c, int bn) const;
+    virtual double rrsw (const double * c, int bn) const;
     
     //Calcualte cost function: difference between measured and
     //reconstructed R for given C
     //Returns vector for the entrie spectrum
-    double rs (const double * c, int bn) const;
+    virtual double rs (const double * c, int bn) const;
 
     //Calculate Jacobian of the cost function with additional variable: albedo
     //Returns single value of derivative on C at one wavelength
-    double j(int bn, double s,
-                double c0, double c1, double c2,
-                double a0, double a1, double a2,
-                double bb0, double bb1, double bb2,
-                double b0, double b1, double b2,
-                double aWAT, double bbWAT, double bWAT,
-                double al1, double al2, double ll) const;
+    virtual double j(int bn, double s,
+                    double c0, double c1, double c2,
+                    double a0, double a1, double a2,
+                    double bb0, double bb1, double bb2,
+                    double b0, double b1, double b2,
+                    double aWAT, double bbWAT, double bWAT,
+                    double al1, double al2, double ll) const;
 
 };
 
@@ -210,7 +203,7 @@ int startingCPA_al(double * parameters, double * startC);
 int fcn(void *p, int m, int n, const double *x, double *fvec, double *fjac, 
 	 int ldfjac, int iflag);
 
-
+int compare (const void * v1, const void * v2);
 //Interface for the LM-optimization library
 //int fcn_al(void *p, int m, int n, const double *x, double *fvec, double *fjac, 
 //	 int ldfjac, int iflag);

@@ -12,12 +12,21 @@ using namespace std;
 
 #include "lm.h"
 
+/// ======================== Hydrooptics ===============================
+
 Hydrooptics :: Hydrooptics(int inBands, double * inModel){
     // set number of bands and model.
     // number of bands
     bands = inBands;
     // hydro-optical model
+    aaw = new double [bands];
+    bbw = new double [bands];
+    bw  = new double [bands];
+    aam = new double [bands * 3];
+    bbm = new double [bands * 3];
+    bm  = new double [bands * 3];
     set_model(inModel);
+
     // measured reflectance
     s = new double [bands];
 };
@@ -37,13 +46,6 @@ int Hydrooptics :: set_model(double * model){
     // into the object
 
     int bn;
-    
-    aaw = new double [bands];
-    bbw = new double [bands];
-    bw  = new double [bands];
-    aam = new double [bands * 3];
-    bbm = new double [bands * 3];
-    bm  = new double [bands * 3];
     
     for (bn = 0; bn < bands; bn ++){
         aaw[bn] = model[bn + 0 * bands];
@@ -66,9 +68,9 @@ int Hydrooptics :: set_model(double * model){
     return 0;
 }
 
-int Hydrooptics :: set_params(double inTheta){
-    //set hydro-optical conditions
-    //used when calculating Rrsw
+int Hydrooptics :: set_theta(double inTheta){
+    //set gemetrical-optical conditions
+    //used when calculating Rrsw and C
     int bn;
     
     // sun zenith
@@ -88,8 +90,8 @@ int Hydrooptics :: set_params(double inTheta){
     return 0;
 }
 
-int Hydrooptics :: set_params(double * inS, double inTheta){
-    //set hydro-optical conditions
+int Hydrooptics :: set_s(double * inS){
+    //set values of measured remote sensing reflectance
     //used when calculating C
     int bn;
     
@@ -97,8 +99,6 @@ int Hydrooptics :: set_params(double * inS, double inTheta){
         //measured reflectance
         s[bn] = inS[bn];
     }
-    
-    set_params(inTheta);
 }
 
 double Hydrooptics :: rrsw (const double * c, int bn) const{
@@ -186,54 +186,104 @@ double Hydrooptics :: j(int bn, double s,
     return (RW1*bb0)/(aWAT+a0*c0+a1*c1+a2*c2)-RW2*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,3.0)*pow(bbWAT+bb0*c0+bb1*c1+bb2*c2,2.0)*2.0-RW1*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)+RW2*bb0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)*2.0;
 };
 
+int Hydrooptics :: retrieve(int startCN, double * startC, double * xBest){
+    // retreive concentrations
 
+    bool log1 = false;
+    bool log2 = false;
+    
+    int startBestCN = 10;
+    int j, k, kBest;
+    
+    //data for best sse
+    double ssev[1000];
+    double * ssep[1000];
+
+    //data for optimization with CMINPACK
+    double x[6], fvec[10], fjac[30], tol, wa[300], fnorm;
+    int info, ipvt[3], lwa = 100;
+    //set tolerance to square of the machine recision
+    tol = sqrt(dpmpar(1));
+    
+    //erase xBest
+    for (j = 0; j < 4; j ++)
+        xBest[j] = 100;
+
+    //estimate SSE for all starting vectors
+    for (k = 0; k < startCN; k ++){
+        
+        // set initial concentrations
+        if (log1 and log2) printf("start [%d]: ", k);
+        for (j = 0; j < 3; j ++){
+            x[j] = startC[k * 3 + j];
+            if (log1 and log2) printf("%5.2g ", (double)x[j]);
+        };
+        
+        // keep SSE value and pointer to SSE
+        ssev[k] = sse(x);
+        ssep[k] = &ssev[k];
+        if (log1 and log2) printf("orig: %d %f %u\n", k, ssev[k], ssep[k]);
+    }
+    
+    //sort SSE pointers
+    qsort(ssep, startCN, sizeof *ssep, compare);
+    
+    // start optimization from 5 best starting vectors
+    for (k = 0; k < startBestCN; k ++){
+        //get index of the k-th best starting vector
+        kBest = ssep[k]-ssev;
+        
+        // set initial concentrations
+        if (log1) printf("start [%d / %d]: ", k, kBest);
+        for (j = 0; j < 3; j ++){
+            x[j] = startC[kBest * 3 + j];
+            if (log1) printf("%5.2g ", (double)x[j]);
+        };
+
+        //perform optimization
+        info = lmder1(fcn, this, bands, 3, x, fvec, fjac, bands, tol, ipvt, wa, lwa);
+        //estimate norm of residuals
+        fnorm = enorm(bands, fvec);
+
+        if (log1) {
+            printf(" ==> ");
+            for (j = 0; j < 3; j ++)
+                printf("%5.2g ", (double)x[j]);
+            printf("%7.4g\n", (double)fnorm);
+        }
+        
+        if (fnorm < xBest[3]){
+            for (j = 0; j < 3; j ++)
+                xBest[j] = (double)x[j];
+            xBest[3] = (double)fnorm;
+        }
+    }
+    //send values of concentrtions and residuals back to Python
+    if (log1) {
+        printf("final result:");
+        for (j = 0; j < 4; j ++){
+            printf("%g ", xBest[j]);
+        }
+        printf("\n");
+    }
+    
+    return 0;
+}
 
 ///======================== HydroopticsShallow ================================
 
 HydroopticsShallow :: HydroopticsShallow(int inBands, double * inModel) : Hydrooptics(inBands, inModel){
-    // set number of bands and model.
-    // number of bands
-    bands = inBands;
-    // hydro-optical model
-    set_model(inModel);
     // albedo
     al = new double [bands];
-    // measured reflectance
-    s = new double [bands];
-
 };
 
 HydroopticsShallow :: ~HydroopticsShallow(){
     delete [] al;
 }
 
-int HydroopticsShallow :: set_params(double * inAL, double inH, double inTheta){
-    //set hydro-optical conditions
-    //used when calculating C
-    int bn;
-    
-    h = inH;
-    
-    for (bn = 0; bn < bands; bn ++){
-        // albedo
-        al[bn] = inAL[bn];
-    }
-    
-    Hydrooptics :: set_params(inTheta);
-}
-
-
-int HydroopticsShallow :: set_params(double * inS, double * inAL, double inH, double inTheta){
-    //set hydro-optical conditions
-    //used when calculating C
-    int bn;
-    
-    for (bn = 0; bn < bands; bn ++){
-        //measured reflectance
-        s[bn] = inS[bn];
-    }
-    
-    set_params(inAL, inH, inTheta);
+int HydroopticsShallow :: set_albedo(double * inAL){
+    //set bottom spectral albedo
+    for (int bn = 0; bn < bands; bn ++) al[bn] = inAL[bn];
 }
 
 double HydroopticsShallow :: rrsw (const double * c, int bn) const{
@@ -268,45 +318,19 @@ double HydroopticsShallow :: j(int bn, double s,
     return -(exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)-1.0)*((RW1*bb0)/(aWAT+a0*c0+a1*c1+a2*c2)-RW2*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,3.0)*pow(bbWAT+bb0*c0+bb1*c1+bb2*c2,2.0)*2.0-RW1*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)+RW2*bb0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)*2.0)+(h*exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)*1.0/sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*(a0*(aWAT+a0*c0+a1*c1+a2*c2)*2.0+a0*(KD0+KD1*mu0)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2)+(bb0*(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2))/b0)*(RW0+(RW1*(bbWAT+bb0*c0+bb1*c1+bb2*c2))/(aWAT+a0*c0+a1*c1+a2*c2)+RW2*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*pow(bbWAT+bb0*c0+bb1*c1+bb2*c2,2.0)))/mu0-(al*h*exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)*1.0/sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*(a0*(aWAT+a0*c0+a1*c1+a2*c2)*2.0+a0*(KD0+KD1*mu0)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2)+(bb0*(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2))/b0))/(mu0*qf);
 };
 
-///=============================== HydroopticsAlbedo =======================
+/// ============================== HydroopticsAlbedo ==========================
+
 HydroopticsAlbedo :: HydroopticsAlbedo(int inBands, double * inModel, double * inLambda) : HydroopticsShallow(inBands, inModel){
-    int i;
+    int bn;
     //wavelenthgs
     lambda = new double [bands];
-    for (i = 0; i <= inBands; i ++)
-        lambda[i] = inLambda[i];
-
+    for (bn = 0; bn < bands; bn ++){
+        lambda[bn] = inLambda[bn];
+    }
 };
 
 HydroopticsAlbedo :: ~HydroopticsAlbedo(){
     delete [] lambda;
-}
-
-int HydroopticsAlbedo :: set_params(double inH, double inTheta){
-    //set hydro-optical conditions
-    //used when calculating Rrsw
-    int bn;
-    
-    // depth
-    h = inH;
-
-    Hydrooptics :: set_params(inTheta);
-
-    return 0;
-}
-
-
-int HydroopticsAlbedo :: set_params(double * inS, double inH, double inTheta){
-    //set hydro-optical conditions
-    //used when calculating Rrsw
-    int bn;
-    
-    for (bn = 0; bn < bands; bn ++){
-        //measured reflectance
-        s[bn] = inS[bn];
-    }
-    
-    set_params(inH, inTheta);
 }
 
 double HydroopticsAlbedo :: albedo(double al1, double al2, int bn) const{
@@ -320,14 +344,11 @@ double HydroopticsAlbedo :: albedo(double al1, double al2, int bn) const{
 }
 
 double HydroopticsAlbedo :: rrsw (const double * c, int bn) const{
-    double r;
     // set albedo from parametrization
     al[bn] = albedo(c[3], c[4], bn);
 
     // calculate Rrsw for shallow waters
-    r = HydroopticsShallow :: rrsw(c, bn);
-
-    return r;
+    return HydroopticsShallow :: rrsw(c, bn);
 };
 
 
@@ -481,7 +502,7 @@ extern int get_rrsw_deep(
     //init HO-object
     Hydrooptics ho(outR_n0, model);
     //set ho-conditions
-    ho.set_params(theta);
+    ho.set_theta(theta);
     for (bn = 0; bn < outR_n0; bn ++){
         //use HO-object for estimation of Rrsw
         outR[bn] = ho.rrsw(inC, bn);
@@ -506,7 +527,9 @@ extern int get_rrsw_shal(
     //init HO-object
     HydroopticsShallow ho(outR_n0, model);
     //set ho-conditions
-    ho.set_params(albedo, h, theta);
+    ho.set_theta(theta);
+    ho.h = h;
+    ho.set_albedo(albedo);
 
     for (bn = 0; bn < outR_n0; bn ++){
         //use HO-object for estimation of Rrsw
@@ -532,7 +555,8 @@ extern int get_rrsw_albe(
     HydroopticsAlbedo ho(outR_n0, model, lambda);
 
     //set ho-conditions
-    ho.set_params(h, theta);
+    ho.set_theta(theta);
+    ho.h = h;
 
     for (bn = 0; bn < outR_n0; bn ++){
         //use HO-object for estimation of Rrsw
@@ -560,112 +584,43 @@ extern int get_c_deep(double parameters[6],
          double *theta, int theta_rows,
          double *outC, int outC_length){
 
-    bool log1 = false;
-    bool log2 = false;
-
-    int bn, i, j, k, kBest, bands = inR_cols, pixels = inR_rows;
-    printf("Retrieval from %d bands x %d pixels (W/O ARMA)...\n", bands, pixels);
-    
-    //result of optimization
-    double xBest[6];
-    
-    // number of results: 3 for input with albedo, 5 for input without albedo
+    int i, j, bands = inR_cols, pixels = inR_rows;
 
     //init HO-object
-    Hydrooptics ho(bands, model);
+    Hydrooptics ho(inR_cols, model);
+
+    printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
     
-    //create starting CPA for 10x10x10 input vectors
-    double sse[1000];
-    double * ssep[1000];
-    double startC[3000];
-    // number of all starting vecotrs
+    double startC[3000], xBest[6];
+    // create starting vecotrs
     int startCN = startingCPA(parameters, startC);
-    // number of best starting vecortrs
-    int startBestCN = 10;
 
-    //prepare for optimization with CMINPACK
-    double x[5], fvec[10], fjac[30], tol, wa[300], fnorm;
-    int info, ipvt[3], lwa = 100;
-    //set tolerance to square of the machine recision
-    tol = sqrt(dpmpar(1));
-
-    
     //for all pixels
     for (i = 0; i < pixels; i ++){
 
-        ho.set_params(inR + i*bands, theta[i]);
+        // set hydro-optical conditions
+        ho.set_theta(theta[i]);
         
-        //erase xBest
-        for (j = 0; j < 4; j ++)
-            xBest[j] = 100;
+        // set measured reflectance
+        ho.set_s(inR + i*bands);
 
-        //estimate SSE for all starting vectors
-        for (k = 0; k < startCN; k ++){
-            
-            // set initial concentrations
-            if (log1 and log2) printf("start [%d]: ", k);
-            for (j = 0; j < 3; j ++){
-                x[j] = startC[k * 3 + j];
-                if (log1 and log2) printf("%5.2g ", (double)x[j]);
-            };
-            
-            // keep SSE and pointer to SSE
-            sse[k] = ho.sse(x);
-            ssep[k] = &sse[k];
-            if (log1 and log2) printf("orig: %d %f %u\n", k, sse[k], ssep[k]);
-        }
-        
-        //sort SSE pointers
-        qsort(ssep, startCN, sizeof *ssep, compare);
-        
-        // start optimization from 5 best starting vectors
-        for (k = 0; k < startBestCN; k ++){
-            //get index of the k-th best starting vector
-            kBest = ssep[k]-sse;
-            
-            // set initial concentrations
-            if (log1) printf("start [%d / %d]: ", k, kBest);
-            for (j = 0; j < 3; j ++){
-                x[j] = startC[kBest * 3 + j];
-                if (log1) printf("%5.2g ", (double)x[j]);
-            };
+        // retrieve concentrations
+        ho.retrieve(startCN, startC, xBest);
 
-            //perform optimization
-            info = lmder1(fcn, &ho, bands, 3, x, fvec, fjac, bands, tol, ipvt, wa, lwa);
-            //estimate norm of residuals
-            fnorm = enorm(bands, fvec);
-    
-            if (log1) {
-                printf(" ==> ");
-                for (j = 0; j < 3; j ++)
-                    printf("%5.2g ", (double)x[j]);
-                printf("%7.4g\n", (double)fnorm);
-            }
-            
-            if (fnorm < xBest[3]){
-                for (j = 0; j < 3; j ++)
-                    xBest[j] = (double)x[j];
-                xBest[3] = (double)fnorm;
-            }
-        }
-        
-        //sent values of concentrtions and residuals back to Python
-        if (log1) printf("final result: %d ", i);
+        //send values of concentrtions and residuals back to Python
         for (j = 0; j < 4; j ++){
-            if (log1) printf("%g ", xBest[j]);
             outC[j + i*4] = xBest[j];
         }
-        if (log1) printf("\n");
-
+    
         if (fmod(i, 100.) == 0.)
             printf("%d / %f \n", i, (double)(i) / (double)(pixels));
+
     }
 
     printf("OK!\n");
 
     return 0;
 };
-
 
 extern int get_c_shal(double parameters[6],
          double *model, int model_n0, int model_n1,
@@ -674,7 +629,47 @@ extern int get_c_shal(double parameters[6],
          double *h, int h_rows,
          double *albedo, int albedo_rows, int albedo_cols,
          double *outC, int outC_length){
+
+    int i, j, startCN, bands = inR_cols, pixels = inR_rows;
+    double startC[3000], xBest[6];
+    
+    //init HO-object
+    HydroopticsShallow ho(inR_cols, model);
+
+    printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
+    
+    // create starting vecotrs
+    startCN = startingCPA(parameters, startC);
+
+    //for all pixels
+    for (i = 0; i < pixels; i ++){
+
+        // set hydro-optical conditions
+        ho.set_theta(theta[i]);
+        
+        // set measured reflectance, albedo and depth
+        ho.set_s(inR + i*bands);
+        ho.set_albedo(albedo + i*bands);
+        ho.h = h[i];
+
+        // retrieve concentrations
+        ho.retrieve(startCN, startC, xBest);
+
+        //send values of concentrtions and residuals back to Python
+        for (j = 0; j < 4; j ++){
+            outC[j + i*4] = xBest[j];
+        }
+    
+        if (fmod(i, 100.) == 0.)
+            printf("%d / %f \n", i, (double)(i) / (double)(pixels));
+
+    }
+
+    printf("OK!\n");
+
+    return 0;
 }
+
 /*
     int i, j, k, pi, bands = inR_cols, pixels = inR_rows;
     printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
