@@ -49,10 +49,10 @@ for v0 in v0vector:
             #rrr += np.multiply(noise, rrr.T).T * v0 / 2 / 100
         
             # add random noise to depth (meters)
-            hhh += noise * v0 / 2
+            #hhh += noise * v0 / 2
             
             # add random noise to bottom albedo (%)
-            #aaa += np.multiply(noise, aaa.T).T * v0 / 2
+            aaa += np.multiply(noise, aaa.T).T * v0 / 2 / 100
             
             # retrieve N concetrations
             t0 = time.time()

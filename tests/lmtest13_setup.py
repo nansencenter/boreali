@@ -18,14 +18,14 @@ wavelen = [412, 443, 490, 510, 555, 670]
 #v0Name = 'rnoise_'
 
 
-v0vector = [0, 0.2, 0.5, 1., 2.] # h-noise [meters]
-xlabel = 'noise level in depth, m'
-v0Name = 'hnoise_'
+#v0vector = [0, 0.2, 0.5, 1., 2.] # h-noise [meters]
+#xlabel = 'noise level in depth, m'
+#v0Name = 'hnoise_'
 
 
-#v0vector = [0, 1, 2, 5, 10] # a-noise [%]
-#xlabel = 'noise level in albedo, %'
-#v0Name = 'anoise_'
+v0vector = [0, 1, 2, 5, 10] # a-noise [%]
+xlabel = 'noise level in albedo, %'
+v0Name = 'anoise_'
 
 v1vector = [5, 10] # depth
 
