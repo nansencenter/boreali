@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 #from boreali import Boreali
 from scipy import interpolate
 
-parameters=[6, 10, 1e-10, 
-            0.01, 15,
+parameters=[0.01, 15,
             0.01, 5,
             0.01, 5,]
 
 bands = 6
-wavelen = [412, 443, 490, 510, 555, 670]
+#wavelen = [412, 443, 490, 510, 555, 670]
+wavelen = [413, 443, 490, 510, 560, 620, 665, 681, 709]
 b = Boreali('michigan', 'michigan')
 # get matrix with HO-model
 model = []

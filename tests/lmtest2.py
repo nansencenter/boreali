@@ -50,7 +50,7 @@ for ci in range(3):
         c[ci] = c0
         #c[1] = c0
         #c[2] = c0
-        r = lm.get_rrsw(parameters, model, c, albedo, h, theta, 6)[1]
+        r = lm.get_rrsw(model, c, albedo, h, theta, len(wavelen))[1]
         plt.plot(wavelen, r, 'o-')
         legendVals.append(lableString % c0)
         rrr.append(r)
