@@ -83,15 +83,6 @@ class Hydrooptics {
     //reconstructed R for given C
     double sse (const double * c);
 
-    //Calculate Jacobian of the cost function:
-    //partial derivative of the cost function by each concentration
-    //Returns vector for the entrie spectrum
-    double jacobian(const double * c, int bn, int vn);
-
-    //Calculate Jacobian of the cost function for deep waters
-    //Returns single value at one wavelength
-    virtual double j(const double * c, int bn, int vn);
-    
     int retrieve(int cpas, int startCN, double * startC, double * xBest);
 };
 
@@ -127,11 +118,6 @@ class HydroopticsShallow : public Hydrooptics {
     //in the object (at initialization)
     //Returns vector for the entrie spectrum
     virtual double rrsw (const double * c, int bn);
-
-
-    //Calculate Jacobian of the cost function for shallow waters
-    //Returns single value at one wavelength
-    virtual double j(const double * c, int bn, int vn);
     
 };
 
@@ -172,23 +158,12 @@ class HydroopticsAlbedo : public HydroopticsShallow {
     //Returns vector for the entrie spectrum
     virtual double rs (const double * c, int bn);
 
-    //Calculate Jacobian of the cost function with additional variable: albedo
-    //Returns single value of derivative on C at one wavelength
-    virtual double j(const double * c, int bn, int vn);
-
 };
 
 int startingCPA(double * parameters, double * startC);
 
 int startingCPA_al(double * parameters, double * startC);
 
-//Interface for the LM-optimization library
-int fcn(void *p, int m, int n, const double *x, double *fvec, double *fjac, 
-	 int ldfjac, int iflag);
-
-int fcn2(void *p, int m, int n, const double *x, double *fvec, int iflag);
+int fcn(void *p, int m, int n, const double *x, double *fvec, int iflag);
 
 int compare (const void * v1, const void * v2);
-//Interface for the LM-optimization library
-//int fcn_al(void *p, int m, int n, const double *x, double *fvec, double *fjac, 
-//	 int ldfjac, int iflag);

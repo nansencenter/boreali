@@ -135,48 +135,6 @@ double  Hydrooptics :: sse (const double * c){
     return sse;
 };
 
-double Hydrooptics :: jacobian(const double * c, int bn, int vn){
-    // calcluate jacobian for a given concentration/band/variable
-    
-    int v0n[5] = { 0, 1, 2, 0, 0};
-    int v1n[5] = { 1, 0, 0, 1, 1};
-    int v2n[5] = { 2, 2, 1, 2, 2};
-
-    aWAT = aaw[bn];
-    bbWAT = bbw[bn];
-    bWAT = bw[bn];
-
-    c0 = c[v0n[vn]];
-    c1 = c[v1n[vn]];
-    c2 = c[v2n[vn]];
-    
-    // define aw, a, bb, b in constructor
-    a0 = aam[bn + v0n[vn]*bands];
-    a1 = aam[bn + v1n[vn]*bands];
-    a2 = aam[bn + v2n[vn]*bands];
-
-    bb0 = bbm[bn + v0n[vn]*bands];
-    bb1 = bbm[bn + v1n[vn]*bands];
-    bb2 = bbm[bn + v2n[vn]*bands];
-
-    b0 = bm[bn + v0n[vn]*bands];
-    b1 = bm[bn + v1n[vn]*bands];
-    b2 = bm[bn + v2n[vn]*bands];
-
-    b0 = b0 == 0 ? 1 : b0;
-    b1 = b1 == 0 ? 1 : b1;
-    b2 = b2 == 0 ? 1 : b2;
-    
-    //sval = s[bn];
-    return j(c, bn, vn);
-};
-
-// jacobian for shallow waters
-double Hydrooptics :: j(const double * c, int bn, int vn){
-
-    return (RW1*bb0)/(aWAT+a0*c0+a1*c1+a2*c2)-RW2*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,3.0)*pow(bbWAT+bb0*c0+bb1*c1+bb2*c2,2.0)*2.0-RW1*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)+RW2*bb0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)*2.0;
-};
-
 int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBest){
     // retreive concentrations
 
@@ -231,9 +189,8 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
             if (log1) printf("%5.2g ", (double)x[j]);
         };
 
-        //perform optimization
-        //info = lmder1(fcn, this, bands, cpas, x, fvec, fjac, bands, tol, ipvt, wa, lwa);
-        info = lmdif1(fcn2, this, bands, cpas, x, fvec, tol, ipvt, wa, lwa);
+        //perform optimization using CMINPACK
+        info = lmdif1(fcn, this, bands, cpas, x, fvec, tol, ipvt, wa, lwa);
         
         //estimate norm of residuals
         fnorm = enorm(bands, fvec);
@@ -296,13 +253,6 @@ double HydroopticsShallow :: rrsw (const double * c, int bn){
     return r;
 };
 
-// jacobian for deep waters
-double HydroopticsShallow :: j(const double * c, int bn, int vn){
-    double alval = al[bn];
-    
-    return -(exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)-1.0)*((RW1*bb0)/(aWAT+a0*c0+a1*c1+a2*c2)-RW2*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,3.0)*pow(bbWAT+bb0*c0+bb1*c1+bb2*c2,2.0)*2.0-RW1*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)+RW2*bb0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)*2.0)+(h*exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)*1.0/sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*(a0*(aWAT+a0*c0+a1*c1+a2*c2)*2.0+a0*(KD0+KD1*mu0)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2)+(bb0*(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2))/b0)*(RW0+(RW1*(bbWAT+bb0*c0+bb1*c1+bb2*c2))/(aWAT+a0*c0+a1*c1+a2*c2)+RW2*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*pow(bbWAT+bb0*c0+bb1*c1+bb2*c2,2.0)))/mu0-(alval*h*exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)*1.0/sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*(a0*(aWAT+a0*c0+a1*c1+a2*c2)*2.0+a0*(KD0+KD1*mu0)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2)+(bb0*(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2))/b0))/(mu0*qf);
-};
-
 /// ============================== HydroopticsAlbedo ==========================
 
 HydroopticsAlbedo :: HydroopticsAlbedo(int inBands, double * inModel, double * inLambda) : HydroopticsShallow(inBands, inModel){
@@ -350,31 +300,7 @@ double HydroopticsAlbedo :: rs (const double * c, int bn){
     return rs;
 };
 
-double HydroopticsAlbedo :: j(const double * c, int bn, int vn){
-    double result;
-    double al1 = c[3];
-    double al2 = c[4];
-    double ll = lambda[bn];
-
-    if (vn < 3){
-        //Calculate Jacobian of the cost function with additional variable: albedo
-        //Returns single value of derivative on C at one wavelength
-        result = -(exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)-1.0)*((RW1*bb0)/(aWAT+a0*c0+a1*c1+a2*c2)-RW2*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,3.0)*pow(bbWAT+bb0*c0+bb1*c1+bb2*c2,2.0)*2.0-RW1*a0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)+RW2*bb0*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*(bbWAT+bb0*c0+bb1*c1+bb2*c2)*2.0)+(h*exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)*1.0/sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*(a0*(aWAT+a0*c0+a1*c1+a2*c2)*2.0+a0*(KD0+KD1*mu0)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2)+(bb0*(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2))/b0)*(RW0+(RW1*(bbWAT+bb0*c0+bb1*c1+bb2*c2))/(aWAT+a0*c0+a1*c1+a2*c2)+RW2*1.0/pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)*pow(bbWAT+bb0*c0+bb1*c1+bb2*c2,2.0)))/mu0-(h*exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)*1.0/sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*(L0+al2*ll*(1.0/2.0E3)+al1*exp(1.0/(G2*G2)*pow(G1-ll,2.0)*(-1.0/2.0))*(1.0/4.0))*(a0*(aWAT+a0*c0+a1*c1+a2*c2)*2.0+a0*(KD0+KD1*mu0)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2)+(bb0*(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2))/b0))/(mu0*qf);
-
-    } else if (vn == 3) {
-        //Calculate Jacobian of the cost function with additional variable: albedo
-        //Returns single value of derivative on ALR (albedo ratio) at one wavelength
-        result = (exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)*exp(1.0/(G2*G2)*pow(G1-ll,2.0)*(-1.0/2.0))*(1.0/4.0))/qf;
-
-    } else if (vn == 4) {
-        //Calculate Jacobian of the cost function with additional variable: albedo
-        //Returns single value of derivative on ALR (albedo ratio) at one wavelength
-        result = (ll*exp((h*sqrt(pow(aWAT+a0*c0+a1*c1+a2*c2,2.0)+(KD0+KD1*mu0)*(aWAT+a0*c0+a1*c1+a2*c2)*(bbWAT/bWAT+(bb0*c0)/b0+(bb1*c1)/b1+(bb2*c2)/b2))*-2.0)/mu0)*(1.0/2.0E3))/qf;
-    }
-
-    return result;
-};
-
+///============================================================================
 int startingCPA(double parameters[6], double * startC){
     int ci0, ci1, ci2;
     double c0, c1, c2, dc0, dc1, dc2;
@@ -410,6 +336,7 @@ int startingCPA(double parameters[6], double * startC){
 
     return fullSize;
 }
+
 
 int startingCPA_al(double parameters[6], double * startC){
     int ci0, ci1, ci2, ci3, ci4;
@@ -465,7 +392,7 @@ int startingCPA_al(double parameters[6], double * startC){
 
 
 //iterface to python
-//calculate Rrsw from given concentrations, albedo, depth, solar zenith
+//calculate Rrsw from given concentrations, solar zenith in deep waters
 extern int get_rrsw_deep(
          double *model, int model_n0, int model_n1,
          double inC[3],
@@ -488,7 +415,7 @@ extern int get_rrsw_deep(
 
 
 //iterface to python
-//calculate Rrsw from given concentrations, albedo, depth, solar zenith
+//calculate Rrsw from given concentrations, solar zenith, depth, albedo
 extern int get_rrsw_shal(
          double *model, int model_n0, int model_n1,
          double inC[3],
@@ -515,7 +442,7 @@ extern int get_rrsw_shal(
 };
 
 //iterface to python
-//calculate Rrsw from given concentrations, albedo, depth, sola zenith
+//calculate Rrsw from given concentrations (including albedo parametrization), solar zenith, depth, wavelengths
 extern int get_rrsw_albe(
          double *model, int model_n0, int model_n1,
          double inC[5],
@@ -552,7 +479,7 @@ int compare (const void * v1, const void * v2)
 }
 
 //iterface to python
-//calculate C from given Rrsw, albedo, depth, solar zenith
+//calculate C from given Rrsw, solar zenith in deep waters
 extern int get_c_deep(double parameters[6],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
@@ -597,6 +524,8 @@ extern int get_c_deep(double parameters[6],
     return 0;
 };
 
+//iterface to python
+//calculate C from given Rrsw, solar zenith, depth, albedo
 extern int get_c_shal(double parameters[6],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
@@ -645,6 +574,9 @@ extern int get_c_shal(double parameters[6],
     return 0;
 }
 
+
+//iterface to python
+//calculate C (including albedo params) from given Rrsw, solar zenith, depth, wavelengths
 extern int get_c_albe(double parameters[6],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
@@ -692,37 +624,9 @@ extern int get_c_albe(double parameters[6],
     return 0;
 }
 
-// functions uses analytical derivatives of Rrsw
-int fcn(void *p, int m, int n, const double *x, double *fvec, double *fjac, 
-	 int ldfjac, int iflag){
-
-    int bn, vn;
-    Hydrooptics *ho = (Hydrooptics *)p;
-    double rsval;
-    
-    if (iflag == 1){
-
-        // calculate cost function
-        for (bn = 0; bn < m; bn ++){
-            rsval = ho -> rs(x, bn);
-            fvec[bn] = rsval;
-        };
-
-    } else {
-
-        //calculate jacobians
-        for (bn = 0; bn < m; bn ++){
-            for (vn = 0; vn < n; vn ++){
-                fjac[bn + ldfjac*vn] = ho->jacobian(x, bn, vn);
-            }
-        }
-    }
-    
-    return 0;
-};
-
+//interface to CMINPACK
 // functions uses finite difference derivatives of Rrsw
-int fcn2(void *p, int m, int n, const double *x, double *fvec, int iflag){
+int fcn(void *p, int m, int n, const double *x, double *fvec, int iflag){
 
     int bn, vn;
     Hydrooptics *ho = (Hydrooptics *)p;

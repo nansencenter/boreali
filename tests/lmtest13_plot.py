@@ -2,10 +2,10 @@
 from lmtest13_setup import *
 
 print 'Plotting...'
-rmsenp = np.load(v0Name + 'rmse5.npy')
+rmsenp = np.load(v0Name + 'rmse.npy')
 
 for ra in [0, 1]:
-    for var in range(5):
+    for var in range(3):
         plt.close()
         legvals = []
         for v1 in range(len(v1vector)):
