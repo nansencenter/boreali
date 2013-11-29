@@ -265,7 +265,7 @@ class Boreali():
                     values):
         '''Retrieve CPA concentrations from Rrsw spectra using LM-optimization
         
-        Wraper around lm.get_c() to be used in multi-processing
+        Wraper around lm.get_c_shal() to be used in multi-processing
         Parameters:
         -----------
         opts : list with 9 values
@@ -287,9 +287,8 @@ class Boreali():
             container of output results
         '''
         valuesLen = len(values)
-        c = lm.get_c(opts, abCoef, rrsw, albedo, depth, theta, valuesLen)[1]
+        c = lm.get_c_shal(opts, abCoef, rrsw, theta, depth, albedo, valuesLen)[1]
         values[:] = c
-        
 
     def process(self, img, opts,
                     mask=None,
@@ -368,7 +367,7 @@ class Boreali():
 
         # get bathymetry in valid pixels (or assume deep waters)
         if depth is None:
-            depth = np.zeros(img.shape()) - 10
+            depth = np.zeros(img.shape()) + 1000
         #plt.imshow(depth);plt.title('depth');plt.colorbar();plt.show()
         depth = depth[mask == 64]
 

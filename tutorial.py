@@ -31,7 +31,7 @@ from nansat import *
 # set forward model parameters: bands, albedo, depth, solar zenith angle
 wavelen = [413, 443, 490, 510, 560, 620, 665, 681, 709] # MERIS bands
 albedo = [0, 0, 0, 0, 0, 0, 0, 0, 0] # no bottom reflection
-h = -10 # boreali will not use bottom correction if h < 0
+h = 5 # boreali will use bottom correction
 theta = 0 # sun in zenith
 
 # set LM parameters
@@ -49,14 +49,14 @@ chls = [0.01, 0.05, 0.1, 0.5, 1, 5]
 legendVals = []
 for chl in chls:
     # call lm.get_rrsw to calculate Rrsw from input concentrations
-    r = lm.get_rrsw(model, [chl, 0.2, 0.01], albedo, h, theta, len(wavelen))[1]
+    r = lm.get_rrsw_shal(model, [chl, 0.2, 0.01], theta, h, albedo, len(wavelen))[1]
     # plot R vs. wavelength
     plt.plot(wavelen, r, '.-')
     # add chl concentration to legends
     legendVals.append('%5.2f mg m-3' % chl)
 
     # retrieve concentration vector from the last Rrsw
-    c = lm.get_c(cpaLimits, model, [r], [albedo], [h], [theta], 4)[1]
+    c = lm.get_c_shal(cpaLimits, model, [r], [theta], [h], [albedo], 4)[1]
     print 'chl=%5.2f, tsm=%5.2f, doc=%5.2f, rmse=%5.2f' % tuple(c)
 
 # add legend, lables, title and save the plot to PNG file
@@ -66,7 +66,6 @@ plt.ylabel('Rrsw, sr-1')
 plt.title('Rrsw spectra for various chl values')
 plt.savefig('test_rrsw.png')
 plt.close()
-
 
 
 # open test image (subimage of lake michigan)
@@ -93,8 +92,8 @@ nCPA.export('test_cpa.nc')
 
 # generate PNG files with CPA spatial distribution and with RGB
 figParams = {'legend': True, 'LEGEND_HEIGHT': 0.5, 'NAME_LOCATION_Y': 0, 'mask_array': mask, 'mask_lut': {1: [255, 255, 255], 2:[128,128,128], 4:[200,200,255]}}
-nCPA.write_figure('test_chl.png', 'chl', clim=[0, 0.5], **figParams)
-nCPA.write_figure('test_tsm.png', 'tsm', clim=[0, 1], **figParams)
-nCPA.write_figure('test_doc.png', 'doc', clim=[0, .5], **figParams)
+nCPA.write_figure('test_chl.png', 'chl', clim=[0, 1.], **figParams)
+nCPA.write_figure('test_tsm.png', 'tsm', clim=[0, 1.], **figParams)
+nCPA.write_figure('test_doc.png', 'doc', clim=[0, .2], **figParams)
 nCPA.write_figure('test_mse.png', 'mse', clim=[1e-5, 1e-2], logarithm=True, **figParams)
 n.write_figure('test_rgb.png', [9, 5, 1], clim=[[0, 0, 0], [0.006, 0.04, 0.024]], mask_array=mask, mask_lut={2:[128,128,128]})
