@@ -1,8 +1,24 @@
 #!/usr/bin/python
-from lmtest0 import *
+from boreali import lm, Boreali
 
-# select silicon sand albedo
-albedo = albedos[0](wavelen)
+import numpy as np
+import matplotlib.pyplot as plt
+
+import time
+
+parameters=[0.01, 5,
+            0.01, .5,
+            0.01, .2,]
+
+wavelen = [413, 443, 490, 510, 560, 620, 665, 681, 709]
+
+
+b = Boreali('michigan', wavelen)
+# get matrix with HO-model
+model = b.get_homodel()
+albedo = b.get_albedo([0])[0]
+
+theta = 25
 
 # plot Rrsw / depth dependence
 cCombinations = [
@@ -32,7 +48,7 @@ for cComb in cCombinations:
     plt.close()
     legendVals = []
     for h in range(1, 30, 4):
-        r = lm.get_rrsw_deep(model, cComb[1], theta, len(wavelen))[1]
+        r = lm.get_rrsw_shal(model, cComb[1], theta, h, albedo, len(wavelen))[1]
         plt.plot(wavelen, r, 'o-')
         legendVals.append('%02d m' % h)
     plt.legend(legendVals)

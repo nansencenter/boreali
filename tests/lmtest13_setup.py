@@ -10,12 +10,13 @@ parameters=[0.01, 5,
             0.01, .5,
             0.01, .2,]
 
-wavelen = [412, 443, 490, 510, 555, 670]
-#wavelen = [413, 443, 490, 510, 560, 620, 665, 681, 709]
+ylabel = [' NRMSE, %', ' RMSE']
+#wavelen = [412, 443, 490, 510, 555, 670]
+wavelen = [413, 443, 490, 510, 560, 620, 665, 681, 709]
 
-#v0vector = [0, 1, 2, 5, 10] # r-noise [%]
-#xlabel = 'noise level in reflectance, %'
-#v0Name = 'rnoise_'
+v0vector = [0, 2, 5, 10, 15] # r-noise [%]
+xlabel = 'noise level in reflectance, %'
+v0Name = 'rnoise_'
 
 
 #v0vector = [0, 0.2, 0.5, 1., 2.] # h-noise [meters]
@@ -23,9 +24,9 @@ wavelen = [412, 443, 490, 510, 555, 670]
 #v0Name = 'hnoise_'
 
 
-v0vector = [0, 1, 2, 5, 10] # a-noise [%]
-xlabel = 'noise level in albedo, %'
-v0Name = 'anoise_'
+#v0vector = [0, 2, 5, 10, 15] # a-noise [%]
+#xlabel = 'noise level in albedo, %'
+#v0Name = 'anoise_'
 
 v1vector = [5, 10] # depth
 
@@ -33,7 +34,7 @@ v2vector = [0, 2, 4, 6, 7] # bottom types sand, silt, limestone, cladophora, cha
 
 
 raTitles = ['relative', 'absolute']
-varTitles = ['CHL', 'TSM', 'aCDOM']
+varTitles = ['CHL', 'TSM', 'aCDOM', 'ASLP', 'AHMP']
 v1Titles = ['h=5 ', 'h=10 ']
 v2Titles = ['sand', 'silt', 'lime', 'clad', 'char']
 

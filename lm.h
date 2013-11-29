@@ -48,6 +48,8 @@ class Hydrooptics {
     double qf;
     double mu0;
     
+    double c0, c1, c2, a0, a1, a2, bb0, bb1, bb2, b0, b1, b2, aWAT, bbWAT, bWAT;
+    
     //Constructor:
     //Set number of bands and the HO-model
     Hydrooptics(int inBands, double * inModel);
@@ -70,32 +72,27 @@ class Hydrooptics {
     //Other parameters (model, albedo, depth, sola zenith) are defined
     //in the object (at initialization)
     //Returns vector for the entrie spectrum
-    virtual double rrsw (const double * c, int bn) const;
+    virtual double rrsw (const double * c, int bn);
 
     //Calcualte cost function: difference between measured and
     //reconstructed R for given C
     //Returns vector for the entrie spectrum
-    virtual double rs (const double * c, int bn) const;
+    virtual double rs (const double * c, int bn);
 
     //Calcualte sum square error: sum pf squared cost function for all bands
     //reconstructed R for given C
-    double sse (const double * c) const;
+    double sse (const double * c);
 
     //Calculate Jacobian of the cost function:
     //partial derivative of the cost function by each concentration
     //Returns vector for the entrie spectrum
-    double jacobian(const double * c, int bn, int vn) const;
+    double jacobian(const double * c, int bn, int vn);
 
     //Calculate Jacobian of the cost function for deep waters
     //Returns single value at one wavelength
-    virtual double j(int bn, double s,
-                     double c0, double c1, double c2,
-                     double a0, double a1, double a2,
-                     double bb0, double bb1, double bb2,
-                     double b0, double b1, double b2,
-                     double aWAT, double bbWAT, double bWAT) const;
+    virtual double j(const double * c, int bn, int vn);
     
-    int retrieve(int startCN, double * startC, double * xBest);
+    int retrieve(int cpas, int startCN, double * startC, double * xBest);
 };
 
 
@@ -129,18 +126,12 @@ class HydroopticsShallow : public Hydrooptics {
     //Other parameters (model, albedo, depth, sola zenith) are defined
     //in the object (at initialization)
     //Returns vector for the entrie spectrum
-    virtual double rrsw (const double * c, int bn) const;
+    virtual double rrsw (const double * c, int bn);
 
 
     //Calculate Jacobian of the cost function for shallow waters
     //Returns single value at one wavelength
-    virtual double j(int bn, double s,
-                     double c0, double c1, double c2,
-                     double a0, double a1, double a2,
-                     double bb0, double bb1, double bb2,
-                     double b0, double b1, double b2,
-                     double aWAT, double bbWAT, double bWAT,
-                     double al) const;
+    virtual double j(const double * c, int bn, int vn);
     
 };
 
@@ -152,8 +143,6 @@ class HydroopticsAlbedo : public HydroopticsShallow {
     public:
 
     double * lambda;
-
-    double h;
 
     //parameters for albedo approximation
     static const double G1 = 555;   //peak center
@@ -169,29 +158,23 @@ class HydroopticsAlbedo : public HydroopticsShallow {
     ~HydroopticsAlbedo();
 
     //albedo approximation
-    double albedo(double al1, double al2, int bn) const;
+    double albedo(double al1, double al2, int bn);
 
     //caluclate Subsurface remote sensing refectance (Rrsw) from given C
     //for deep waters
     //Other parameters (model, albedo, depth, sola zenith) are defined
     //in the object (at initialization)
     //Returns vector for the entrie spectrum
-    virtual double rrsw (const double * c, int bn) const;
+    virtual double rrsw (const double * c, int bn);
     
     //Calcualte cost function: difference between measured and
     //reconstructed R for given C
     //Returns vector for the entrie spectrum
-    virtual double rs (const double * c, int bn) const;
+    virtual double rs (const double * c, int bn);
 
     //Calculate Jacobian of the cost function with additional variable: albedo
     //Returns single value of derivative on C at one wavelength
-    virtual double j(int bn, double s,
-                    double c0, double c1, double c2,
-                    double a0, double a1, double a2,
-                    double bb0, double bb1, double bb2,
-                    double b0, double b1, double b2,
-                    double aWAT, double bbWAT, double bWAT,
-                    double al1, double al2, double ll) const;
+    virtual double j(const double * c, int bn, int vn);
 
 };
 
@@ -202,6 +185,8 @@ int startingCPA_al(double * parameters, double * startC);
 //Interface for the LM-optimization library
 int fcn(void *p, int m, int n, const double *x, double *fvec, double *fjac, 
 	 int ldfjac, int iflag);
+
+int fcn2(void *p, int m, int n, const double *x, double *fvec, int iflag);
 
 int compare (const void * v1, const void * v2);
 //Interface for the LM-optimization library

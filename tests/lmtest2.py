@@ -1,8 +1,24 @@
 #!/usr/bin/python
-from lmtest0 import *
+from boreali import lm, Boreali
 
-# select silicon sand albedo
-albedo = albedos[0](wavelen)
+import numpy as np
+import matplotlib.pyplot as plt
+
+import time
+
+parameters=[0.01, 5,
+            0.01, .5,
+            0.01, .2,]
+
+wavelen = [413, 443, 490, 510, 560, 620, 665, 681, 709]
+
+
+b = Boreali('michigan', wavelen)
+# get matrix with HO-model
+model = b.get_homodel()
+albedo = b.get_albedo([0])[0]
+
+theta = 25
 
 # plot Rrsw / C dependence for semi shallow water
 h = 5
@@ -50,7 +66,8 @@ for ci in range(3):
         c[ci] = c0
         #c[1] = c0
         #c[2] = c0
-        r = lm.get_rrsw(model, c, albedo, h, theta, len(wavelen))[1]
+        #r = lm.get_rrsw(model, c, albedo, h, theta, len(wavelen))[1]
+        r = lm.get_rrsw_shal(model, c, theta, h, albedo, len(wavelen))[1]
         plt.plot(wavelen, r, 'o-')
         legendVals.append(lableString % c0)
         rrr.append(r)
