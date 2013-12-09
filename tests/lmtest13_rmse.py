@@ -46,17 +46,18 @@ for v0 in v0vector:
             #noise /= np.abs(noise).max()
 
             # add random noise to Rrsw (%)
-            #rrr2 = rrr + np.multiply(noise, rrr.T).T * v0 / 2 / 100
+            rrr2 = rrr + np.multiply(noise, rrr.T).T * v0 / 2 / 100
         
             # add random noise to depth (meters)
             #hhh2 = hhh + noise * v0 / 2
             
             # add random noise to bottom albedo (%)
-            aaa2 += np.multiply(noise, aaa.T).T * v0 / 2 / 100
+            #aaa2 += np.multiply(noise, aaa.T).T * v0 / 2 / 100
             
             # retrieve N concetrations
             t0 = time.time()
             #ccc2 = lm.get_c_deep(parameters, model, rrr, ttt, 4*pixels)[1]
+            print 'Retrieve: ', v0, v1, v2
             ccc2 = lm.get_c_shal(parameters, model, rrr2, ttt, hhh2, aaa2, 4*pixels)[1]
             t1 = time.time()
             print 'Time spent:', t1-t0

@@ -8,7 +8,8 @@ import time
 
 parameters=[0.01, 5,
             0.01, .5,
-            0.01, .2,]
+            0.01, .2,
+            10]
 
 ylabel = [' NRMSE, %', ' RMSE']
 #wavelen = [412, 443, 490, 510, 555, 670]

@@ -7,9 +7,10 @@ import matplotlib.pyplot as plt
 #from boreali import Boreali
 from scipy import interpolate
 
-parameters=[0.01, 5.,
-            0.01, 2.,
-            0.01, .5,]
+parameters=[0.01, 50.,
+            0.01, 20.,
+            0.01, .5,
+            10]
 
 #wavelen = [412, 443, 490, 510, 555, 670]
 wavelen = [413, 443, 490, 510, 560, 620, 665, 681, 709]

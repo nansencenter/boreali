@@ -16,6 +16,10 @@ nBathy = Nansat('/files/michi/glbathy.tif')
 #d = Domain(4326, '-te -88 41.5 -86 44 -ts 600 1000')
 #chicago
 d = Domain(4326, '-te -88 41.5 -87 42.3 -ts 1000 1000')
+
+#sleeping bear dunes
+d = Domain(4326, '-te -86.5 44.5 -85.5 45.5 -ts 500 500')
+
 nBathy.reproject(d)
 nBathy.write_figure(iDir + 'bathymetry.png', 1, clim=[-60, 0], legend=True, caption='Depth [ft]', fontSize=20)
 bathy = -0.3 * nBathy[1]

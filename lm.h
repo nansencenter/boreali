@@ -35,6 +35,8 @@ class Hydrooptics {
     
     int bands;
     
+    double parameters[7];
+    
     double * aaw;
     double * bbw;
     double * bw;
@@ -46,13 +48,13 @@ class Hydrooptics {
 
     double theta;
     double qf;
-    double mu0;
+    double mu0, mu01;
     
     double c0, c1, c2, a0, a1, a2, bb0, bb1, bb2, b0, b1, b2, aWAT, bbWAT, bWAT;
     
     //Constructor:
     //Set number of bands and the HO-model
-    Hydrooptics(int inBands, double * inModel);
+    Hydrooptics(double * iparameters, int inBands, double * inModel);
 
     //Destructor
     //Clean memory from model
@@ -103,7 +105,7 @@ class HydroopticsShallow : public Hydrooptics {
 
     //Constructor:
     //Set number of bands and the HO-model
-    HydroopticsShallow(int inBands, double * inModel);
+    HydroopticsShallow(double * parameters, int inBands, double * inModel);
 
     //Destructor
     //Clean memory from model
@@ -137,7 +139,7 @@ class HydroopticsAlbedo : public HydroopticsShallow {
        
     //Constructor:
     //Set number of bands and the HO-model
-    HydroopticsAlbedo(int inBands, double * inModel, double * inLambda);
+    HydroopticsAlbedo(double * parameters, int inBands, double * inModel, double * inLambda);
 
     //Destructor
     //Clean memory from model

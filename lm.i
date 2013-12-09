@@ -24,13 +24,13 @@ extern int get_rrsw_albe(
          double *lambda, int lambda_n0,
          double *outR, int outR_n0);
 
-extern int get_c_deep(double parameters[6],
+extern int get_c_deep(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
          double *outC, int outC_length);
 
-extern int get_c_shal(double parameters[6],
+extern int get_c_shal(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
@@ -38,7 +38,7 @@ extern int get_c_shal(double parameters[6],
          double *albedo, int albedo_rows, int albedo_cols,
          double *outC, int outC_length);
 
-extern int get_c_albe(double parameters[6],
+extern int get_c_albe(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
@@ -57,7 +57,7 @@ extern int get_c_albe(double parameters[6],
 %}
 
 %apply (double IN_ARRAY1[ANY]) {
-    (double parameters[6]),
+    (double parameters[7]),
     (double inC[3]),
     (double inC[5])
 };
@@ -103,13 +103,13 @@ extern int get_rrsw_albe(
          double *lambda, int lambda_n0,
          double *outR, int outR_n0);
 
-extern int get_c_deep(double parameters[6],
+extern int get_c_deep(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
          double *outC, int outC_length);
 
-extern int get_c_shal(double parameters[6],
+extern int get_c_shal(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
@@ -117,7 +117,7 @@ extern int get_c_shal(double parameters[6],
          double *albedo, int albedo_rows, int albedo_cols,
          double *outC, int outC_length);
 
-extern int get_c_albe(double parameters[6],
+extern int get_c_albe(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,

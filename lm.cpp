@@ -14,8 +14,10 @@ using namespace std;
 
 /// ======================== Hydrooptics ===============================
 
-Hydrooptics :: Hydrooptics(int inBands, double * inModel){
-    // set number of bands and model.
+Hydrooptics :: Hydrooptics(double * iparameters, int inBands, double * inModel){
+    // set parameters, number of bands and model.
+    // set parameters
+    for (int i=0; i < 7; i ++) parameters[i] = iparameters[i];
     // number of bands
     bands = inBands;
     // hydro-optical model
@@ -78,7 +80,7 @@ int Hydrooptics :: set_theta(double inTheta){
     //inwater sun zenith
     double theta1 = asin(sin(theta) / NW);
     //inwater cos(sun zenith)
-    double mu01 = cos(theta1);
+    mu01 = cos(theta1);
     //internal surface reflectivity
     double rhoInt = 0.271 + 0.249 * mu01;
     //Calculate Q/f factor (from theta, from the object)
@@ -117,9 +119,14 @@ double Hydrooptics :: rs (const double * c, int bn){
     // calcucate cost function per band
     double rs;
     rs = rrsw(c, bn) - s[bn];
-
-    if (c[0] < 0 || c[1] < 0 || c[2] < 0)
-        rs = 100;
+    
+    //printf("params:%f %f %f\n", parameters[1], parameters[3], parameters[5]);
+    if (c[0] < parameters[0] ||
+        c[0] > parameters[1] ||
+        c[1] < parameters[2] ||
+        c[1] > parameters[3] ||
+        c[2] < parameters[4] ||
+        c[2] > parameters[5]) rs = 100;
 
     return rs;
 };
@@ -141,7 +148,7 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
     bool log1 = false;
     bool log2 = false;
     
-    int startBestCN = 10;
+    int startBestCN = parameters[6];
     int j, k, kBest;
     
     //data for best sse
@@ -149,8 +156,8 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
     double * ssep[4000];
 
     //data for optimization with CMINPACK
-    double x[6], fvec[10], fjac[30], tol, wa[300], fnorm;
-    int info, ipvt[3], lwa = 100;
+    double x[6], fvec[1000], fjac[3000], tol, wa[30000], fnorm;
+    int info, ipvt[6], lwa = 100;
     //set tolerance to square of the machine recision
     tol = sqrt(dpmpar(1));
     
@@ -177,7 +184,7 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
     //sort SSE pointers
     qsort(ssep, startCN, sizeof *ssep, compare);
     
-    // start optimization from 5 best starting vectors
+    // start optimization from <startBestCN> best starting vectors
     for (k = 0; k < startBestCN; k ++){
         //get index of the k-th best starting vector
         kBest = ssep[k]-ssev;
@@ -222,7 +229,7 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
 
 ///======================== HydroopticsShallow ================================
 
-HydroopticsShallow :: HydroopticsShallow(int inBands, double * inModel) : Hydrooptics(inBands, inModel){
+HydroopticsShallow :: HydroopticsShallow(double * parameters, int inBands, double * inModel) : Hydrooptics(parameters, inBands, inModel){
     // albedo
     al = new double [bands];
 };
@@ -238,16 +245,26 @@ int HydroopticsShallow :: set_albedo(double * inAL){
 
 double HydroopticsShallow :: rrsw (const double * c, int bn){
     // calculate Rrsw from given C, for a given band
-    double a, bb, b, kd, r;
+    double a, bb, b, kd, r, g, f2, mu02;
 
     // deep
     a = aaw[bn] + aam[bn + 0 * bands] * c[0] + aam[bn + 1 * bands] * c[1] + aam[bn + 2 * bands] * c[2];
     bb = bbw[bn] + bbm[bn + 0 * bands] * c[0] + bbm[bn + 1 * bands] * c[1] + bbm[bn + 2 * bands] * c[2];
-    r  = RW0 + RW1 * bb / a + RW2 * (bb * bb) / (a * a);
+
+    // morel, 1996
+    //r  = RW0 + RW1 * bb / a + RW2 * (bb * bb) / (a * a);
+
+    //sokoletsky, 2012
+    g = bb / (a + bb);
+    r = 0.2874 * g * (1 + 0.2821 * g - 1.019 + 0.4561);
+
+    //mu02 = 1.0;  //inwater cos(obs zenith)
+    //f2 = 1;//(1 + 0.1098 / mu01) * (1 + 0.4021 / mu02);
+    //r = 0.0512 * g * (1 + 4.6659 * g - 7.8387 * pow(g, 2) + 5.4571 * pow(g, 3)) * f2;
     
     // shallow
     b  = bw[bn] + bm[bn + 0 * bands] * c[0] + bbm[bn + 1 * bands] * c[1] + bbm[bn + 2 * bands] * c[2] ;
-    kd = sqrt(a * a + a * bb * (KD0 + KD1 * mu0)) / mu0;
+    kd = sqrt(a * a + a * b * (KD0 + KD1 * mu0)) / mu0;
     r = r * (1 - exp(-2 * h * kd)) + al[bn] * exp(-2 * h * kd) / qf;
 
     return r;
@@ -255,7 +272,7 @@ double HydroopticsShallow :: rrsw (const double * c, int bn){
 
 /// ============================== HydroopticsAlbedo ==========================
 
-HydroopticsAlbedo :: HydroopticsAlbedo(int inBands, double * inModel, double * inLambda) : HydroopticsShallow(inBands, inModel){
+HydroopticsAlbedo :: HydroopticsAlbedo(double * parameters, int inBands, double * inModel, double * inLambda) : HydroopticsShallow(parameters, inBands, inModel){
     int bn;
     //wavelenthgs
     lambda = new double [bands];
@@ -292,10 +309,16 @@ double HydroopticsAlbedo :: rs (const double * c, int bn){
     
     rs = rrsw(c, bn) - s[bn];
 
-    if (c[0] < 0  || c[1] < 0   || c[2] < 0 ||
-        c[3] < 0. || c[3] > 1.0 ||
-        c[4] < 0. || c[4] > 1.0)
-        rs = 100;
+    if (c[0] < parameters[0] ||
+        c[0] > parameters[1] ||
+        c[1] < parameters[2] ||
+        c[1] > parameters[3] ||
+        c[2] < parameters[4] ||
+        c[2] > parameters[5] ||
+        c[3] < 0.  ||
+        c[3] > 1.0 ||
+        c[4] < 0.  ||
+        c[4] > 1.0) rs = 100;
 
     return rs;
 };
@@ -400,9 +423,10 @@ extern int get_rrsw_deep(
          double *outR, int outR_n0){
 
     int bn;
+    double parameters[7] = {0, 0, 0, 0, 0, 0, 0};
 
     //init HO-object
-    Hydrooptics ho(outR_n0, model);
+    Hydrooptics ho(parameters, outR_n0, model);
     //set ho-conditions
     ho.set_theta(theta);
     for (bn = 0; bn < outR_n0; bn ++){
@@ -425,9 +449,10 @@ extern int get_rrsw_shal(
          double *outR, int outR_n0){
 
     int bn;
+    double parameters[7] = {0, 0, 0, 0, 0, 0, 0};
 
     //init HO-object
-    HydroopticsShallow ho(outR_n0, model);
+    HydroopticsShallow ho(parameters, outR_n0, model);
     //set ho-conditions
     ho.set_theta(theta);
     ho.h = h;
@@ -452,9 +477,10 @@ extern int get_rrsw_albe(
          double *outR, int outR_n0){
 
     int bn;
+    double parameters[7] = {0, 0, 0, 0, 0, 0, 0};
     
     //init HO-object
-    HydroopticsAlbedo ho(outR_n0, model, lambda);
+    HydroopticsAlbedo ho(parameters, outR_n0, model, lambda);
 
     //set ho-conditions
     ho.set_theta(theta);
@@ -480,7 +506,7 @@ int compare (const void * v1, const void * v2)
 
 //iterface to python
 //calculate C from given Rrsw, solar zenith in deep waters
-extern int get_c_deep(double parameters[6],
+extern int get_c_deep(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
@@ -489,7 +515,7 @@ extern int get_c_deep(double parameters[6],
     int i, j, bands = inR_cols, pixels = inR_rows, cpas=3;
 
     //init HO-object
-    Hydrooptics ho(inR_cols, model);
+    Hydrooptics ho(parameters, inR_cols, model);
 
     printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
     
@@ -526,7 +552,7 @@ extern int get_c_deep(double parameters[6],
 
 //iterface to python
 //calculate C from given Rrsw, solar zenith, depth, albedo
-extern int get_c_shal(double parameters[6],
+extern int get_c_shal(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
@@ -538,7 +564,7 @@ extern int get_c_shal(double parameters[6],
     double startC[3000], xBest[6];
     
     //init HO-object
-    HydroopticsShallow ho(inR_cols, model);
+    HydroopticsShallow ho(parameters, inR_cols, model);
 
     printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
     
@@ -577,7 +603,7 @@ extern int get_c_shal(double parameters[6],
 
 //iterface to python
 //calculate C (including albedo params) from given Rrsw, solar zenith, depth, wavelengths
-extern int get_c_albe(double parameters[6],
+extern int get_c_albe(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
@@ -589,7 +615,7 @@ extern int get_c_albe(double parameters[6],
     double startC[16000], xBest[6];
     
     //init HO-object
-    HydroopticsAlbedo ho(inR_cols, model, lambda);
+    HydroopticsAlbedo ho(parameters, inR_cols, model, lambda);
 
     printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
     

@@ -2974,13 +2974,13 @@ extern int get_rrsw_albe(
          double *lambda, int lambda_n0,
          double *outR, int outR_n0);
 
-extern int get_c_deep(double parameters[6],
+extern int get_c_deep(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
          double *outC, int outC_length);
 
-extern int get_c_shal(double parameters[6],
+extern int get_c_shal(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
@@ -2988,7 +2988,7 @@ extern int get_c_shal(double parameters[6],
          double *albedo, int albedo_rows, int albedo_cols,
          double *outC, int outC_length);
 
-extern int get_c_albe(double parameters[6],
+extern int get_c_albe(double parameters[7],
          double *model, int model_n0, int model_n1,
          double *inR, int inR_rows, int inR_cols,
          double *theta, int theta_rows,
@@ -4000,7 +4000,7 @@ SWIGINTERN PyObject *_wrap_get_c_deep(PyObject *SWIGUNUSEDPARM(self), PyObject *
   if (!PyArg_ParseTuple(args,(char *)"OOOOO:get_c_deep",&obj0,&obj1,&obj2,&obj3,&obj4)) SWIG_fail;
   {
     npy_intp size[1] = {
-      6 
+      7 
     };
     array1 = obj_to_array_contiguous_allow_conversion(obj0, NPY_DOUBLE,
       &is_new_object1);
@@ -4161,7 +4161,7 @@ SWIGINTERN PyObject *_wrap_get_c_shal(PyObject *SWIGUNUSEDPARM(self), PyObject *
   if (!PyArg_ParseTuple(args,(char *)"OOOOOOO:get_c_shal",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6)) SWIG_fail;
   {
     npy_intp size[1] = {
-      6 
+      7 
     };
     array1 = obj_to_array_contiguous_allow_conversion(obj0, NPY_DOUBLE,
       &is_new_object1);
@@ -4368,7 +4368,7 @@ SWIGINTERN PyObject *_wrap_get_c_albe(PyObject *SWIGUNUSEDPARM(self), PyObject *
   if (!PyArg_ParseTuple(args,(char *)"OOOOOOO:get_c_albe",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6)) SWIG_fail;
   {
     npy_intp size[1] = {
-      6 
+      7 
     };
     array1 = obj_to_array_contiguous_allow_conversion(obj0, NPY_DOUBLE,
       &is_new_object1);

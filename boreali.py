@@ -11,6 +11,15 @@ import lm
 
 class Boreali():
     '''Perform processing of optical image with the BOREALI algorithm'''
+    B_WAT = 0.5
+    B_CHL = 0.0011
+    B_TSM = 0.08
+    B_DOC = 1
+    
+    KD0 = -0.218
+    KD1 =  0.473
+    
+    mu0 = 1
     def __init__(self, model='ladoga', wavelen=[412, 443, 490, 510, 555, 670]):
         '''Generate Boreali and Set up retrieval options
         
@@ -27,6 +36,7 @@ class Boreali():
         self.homo = self.read_ho_models('models.txt', model)
         self.set_albedos()
         self.wavelen = wavelen
+        self.model = self.get_homodel()
     
     def read_ho_models(self, hoFileName='', iModelName='ladoga'):
         '''Read file with HO-models and prepare interpolators
@@ -442,3 +452,32 @@ class Boreali():
             cImg[i, :, :] = cArray
         
         return cImg, mask
+
+    def get_kd(self, c):
+        '''Get spectral Kd'''
+        #aW, aCHL, aTSM, aDOC, bbW, bbCHL, bbTSM, bbDOC
+        awat = self.model[0]
+        achl = self.model[1]
+        atsm = self.model[2]
+        adoc = self.model[3]
+        bbwat = self.model[4]
+        bbchl = self.model[5]
+        bbtsm = self.model[6]
+        bbdoc = self.model[7]
+        bwat = bbwat / self.B_WAT
+        bchl = bbchl / self.B_CHL
+        btsm = bbtsm / self.B_TSM
+        bdoc = 0
+        
+        a = awat + achl * c[0] + atsm * c[1] + adoc * c[2]
+        bb = bbwat + bbchl * c[0] + bbtsm * c[1] + bbdoc * c[2]
+        b = bwat + bchl * c[0] + btsm * c[1] + bdoc * c[2]
+        kd = np.sqrt(a ** 2 + a * b * (self.KD0 + self.KD1 * self.mu0)) / self.mu0
+        
+        return kd   
+
+    def get_attenuated_ed(self, ed0, kd, h):
+        '''Calculate attenuated Ed'''
+        
+        ed = ed0 * np.exp(- kd * h)
+        return ed
