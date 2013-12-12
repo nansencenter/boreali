@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from matplotlib import cm
-cmap = cm.get_cmap('jet')
+cmap = cm.get_cmap('prism')
 
 
 # RETRIEVE C FROM INSITU SPECTRA
@@ -22,8 +22,14 @@ ilu1 = idata[:, 4::6]
 
 #wavelen = range(412, 709, 20)
 #wavelen.append(709)
+
+wavelen = range(450, 600, 5)
+
+#wavelen = range(412, 709, 20)
+#wavelen.append(709)
+
 #wavelen = [412, 443, 490, 510, 555, 670]
-wavelen = [413, 443, 490, 510, 560, 620, 665, 681, 709]
+#wavelen = [413, 443, 490, 510, 560, 620, 665, 681, 709]
 
 ed0 = interpolate.interp1d(iwavelen, ied0.T)(wavelen)
 ed1 = interpolate.interp1d(iwavelen, ied1.T)(wavelen)
@@ -35,11 +41,11 @@ rr0 = lu0 / ed0
 rr1 = lu1 / ed1
 
 #plt.plot(wavelen, rr0[0], 'o-')
-#plt.plot(wavelen, rr1, 'o-')
+#plt.plot(wavelen, rr1[0], 'o-')
 #plt.show()
 #raise
 
-b = Boreali('michi2', wavelen)
+b = Boreali('michigan', wavelen)
 # get matrix with HO-model
 model = b.get_homodel()
 
@@ -113,7 +119,7 @@ aa = np.array(aa)
 parameters=[0.01, 5.0,
             0.01, 2.0,
             0.01, 0.5,
-            100]
+            200]
 
 c0 = lm.get_c_shal(parameters, model, rr0, tt, hh, aa, 4*len(tt))[1]
 c1 = lm.get_c_shal(parameters, model, rr1, tt, hh, aa, 4*len(tt))[1]
@@ -121,6 +127,8 @@ c1 = lm.get_c_shal(parameters, model, rr1, tt, hh, aa, 4*len(tt))[1]
 
 cc0 = np.array(c0).reshape(9, 4)[:, :-1]
 cc1 = np.array(c1).reshape(9, 4)[:, :-1]
+cc0e = np.array(c0).reshape(9, 4)[:, -1]
+cc1e = np.array(c1).reshape(9, 4)[:, -1]
 
 """
 ######## plot Ed(0) vs Ed_est(0)
@@ -149,7 +157,6 @@ for ci in [0,1,2,3,4,5,6,7,8]:
 
 
 
-
 """
 ######### plot Rrsw retr vs Rrsw insitu
 legval = []
@@ -167,7 +174,6 @@ plt.ylabel('Rrsw(-1), W m-2, nm')
 plt.legend(legval)
 plt.show()
 """
-
 
 
 
@@ -198,18 +204,19 @@ legval = []
 #for ci in [0,5,6]:
 for ci in range(9):
     params = parameters[:]
-    #params[0] = cci[ci, 0]*0.95
-    #params[1] = cci[ci, 0]*1.05
+    params[0] = cci[ci, 0]*0.95
+    params[1] = cci[ci, 0]*1.05
     c1 = lm.get_c_shal(params, model, [rr1[ci]], [tt[ci]], [hh[ci]-1], [aa[ci]], 4)[1]
-    #c1 = lm.get_c_deep(params, model, [rr1[ci]], [tt[ci]], 4)[1]
-    r1 = lm.get_rrsw_shal(model, c1[:-1], tt[ci], hh[ci]-1, aa[ci], len(wavelen))[1]
-    rd = lm.get_rrsw_deep(model, c1[:-1], tt[ci], len(wavelen))[1]
+    #cd = lm.get_c_deep(params, model, [rr1[ci]], [tt[ci]], 4)[1]
+    r1 = lm.get_rrsw_shal(model,  c1[:-1], tt[ci], hh[ci]-1, aa[ci], len(wavelen))[1]
+    r2 = lm.get_rrsw_shal(model, cc1[ci],  tt[ci], hh[ci]-1, aa[ci], len(wavelen))[1]
+    #rd = lm.get_rrsw_deep(model, cd[:-1], tt[ci], len(wavelen))[1]
     plt.plot(wavelen, rr1[ci], '.-', c=cmap(ci/8.))
-    plt.plot(wavelen, r1, '--', c=cmap(ci/8.))
-    #plt.plot(wavelen, rd, '-.', c=cmap(ci/8.))
+    plt.plot(wavelen, r1,      '--', c=cmap(ci/8.))
+    plt.plot(wavelen, r2,      '-.',  c=cmap(ci/8.))
     legval.append('%d input' % (ci + 1))
-    legval.append('shallow: CHL=%5.2f TSM=%5.2f DOC=%5.2f' % (c1[0], c1[1], c1[2]))
-    #legval.append('deep: CHL=%5.2f TSM=%5.2f DOC=%5.2f' % (c1[0], c1[1], c1[2]))
+    legval.append('shallow(F): CPA=%5.2f / %5.2f / %5.2f / %7.5f' % (c1[0], c1[1], c1[2], c1[3]))
+    legval.append('shallow(A): CPA=%5.2f / %5.2f / %5.2f / %7.5f' % (cc1[ci, 0], cc1[ci, 1], cc1[ci, 2], cc1e[ci]))
 
 x1,x2,y1,y2 = plt.axis()
 plt.axis((x1, x2 * 1.1, y1, y2))

@@ -156,8 +156,8 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
     double * ssep[4000];
 
     //data for optimization with CMINPACK
-    double x[6], fvec[1000], fjac[3000], tol, wa[30000], fnorm;
-    int info, ipvt[6], lwa = 100;
+    double x[6], fvec[2000], fjac[6000], tol, wa[60000], fnorm;
+    int info, ipvt[12], lwa = 200;
     //set tolerance to square of the machine recision
     tol = sqrt(dpmpar(1));
     
