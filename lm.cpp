@@ -272,7 +272,7 @@ double HydroopticsShallow :: rrsw (const double * c, int bn){
                 + bm[bn + 1 * bands] * c[1]
                 + bm[bn + 2 * bands] * c[2] ;
 
-    kd = sqrt(a * a + a * b * (KD0 + KD1 * mu0)) / mu0;
+    kd = sqrt(a * a + a * b * (KD0 + KD1 * mu01)) / mu01;
     r = r * (1 - exp(-2 * h * kd)) + al[bn] * exp(-2 * h * kd) / qf;
 
     return r;
