@@ -64,7 +64,7 @@ int Hydrooptics :: set_model(double * model){
         // efficiency
         bm[bn + 0 * bands] = model[bn + 5 * bands] / B_CHL;
         bm[bn + 1 * bands] = model[bn + 6 * bands] / B_TSM;
-        bm[bn + 1 * bands] = 0;
+        bm[bn + 2 * bands] = 0;
     }
         
     return 0;
@@ -248,22 +248,30 @@ double HydroopticsShallow :: rrsw (const double * c, int bn){
     double a, bb, b, kd, r, g, f2, mu02;
 
     // deep
-    a = aaw[bn] + aam[bn + 0 * bands] * c[0] + aam[bn + 1 * bands] * c[1] + aam[bn + 2 * bands] * c[2];
-    bb = bbw[bn] + bbm[bn + 0 * bands] * c[0] + bbm[bn + 1 * bands] * c[1] + bbm[bn + 2 * bands] * c[2];
+    a = aaw[bn] + aam[bn + 0 * bands] * c[0]
+                + aam[bn + 1 * bands] * c[1]
+                + aam[bn + 2 * bands] * c[2];
+
+    bb = bbw[bn] + bbm[bn + 0 * bands] * c[0]
+                 + bbm[bn + 1 * bands] * c[1]
+                 + bbm[bn + 2 * bands] * c[2];
 
     // morel, 1996
-    //r  = RW0 + RW1 * bb / a + RW2 * (bb * bb) / (a * a);
+    r  = RW0 + RW1 * bb / a + RW2 * (bb * bb) / (a * a);
 
     //sokoletsky, 2012
-    g = bb / (a + bb);
-    r = 0.2874 * g * (1 + 0.2821 * g - 1.019 + 0.4561);
+    //g = bb / (a + bb);
+    //r = 0.2874 * g * (1 + 0.2821 * g - 1.019 + 0.4561);
 
     //mu02 = 1.0;  //inwater cos(obs zenith)
     //f2 = 1;//(1 + 0.1098 / mu01) * (1 + 0.4021 / mu02);
     //r = 0.0512 * g * (1 + 4.6659 * g - 7.8387 * pow(g, 2) + 5.4571 * pow(g, 3)) * f2;
     
     // shallow
-    b  = bw[bn] + bm[bn + 0 * bands] * c[0] + bbm[bn + 1 * bands] * c[1] + bbm[bn + 2 * bands] * c[2] ;
+    b  = bw[bn] + bm[bn + 0 * bands] * c[0]
+                + bm[bn + 1 * bands] * c[1]
+                + bm[bn + 2 * bands] * c[2] ;
+
     kd = sqrt(a * a + a * b * (KD0 + KD1 * mu0)) / mu0;
     r = r * (1 - exp(-2 * h * kd)) + al[bn] * exp(-2 * h * kd) / qf;
 

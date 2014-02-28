@@ -33,6 +33,7 @@ for v0 in v0vector:
             rrr = []
             for i, c in enumerate(ccc):
                 #r = lm.get_rrsw_deep(model, c, ttt[i], len(wavelen))[1]
+                raise
                 r = lm.get_rrsw_shal(model, c, ttt[i], hhh[i], aaa[i], len(wavelen))[1]
                 rrr.append(r)
             rrr = np.array(rrr)

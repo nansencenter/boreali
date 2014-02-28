@@ -23,8 +23,8 @@ ilu1 = idata[:, 4::6]
 
 #wavelen = range(412, 709, 20)
 #wavelen.append(709)
-#wavelen = [412, 443, 490, 510, 555, 670]
-wavelen = [413, 443, 490, 510, 560, 620, 665, 709]
+wavelen = [412, 443, 488, 531, 547, 667]
+#wavelen = [413, 443, 490, 510, 560, 620, 665, 709]
 
 
 ed0 = interpolate.interp1d(iwavelen, ied0.T)(wavelen)
@@ -41,9 +41,7 @@ rr1 = lu1 / ed1
 #plt.show()
 #raise
 
-b = Boreali('michigan', wavelen)
-# get matrix with HO-model
-model = b.get_homodel()
+models = ['ERIE', 'MICHIGAN', 'ONTARIO', 'SUPERIOR', 'ORIGINAL', 'ORIGINALA']
 
 hh = [
 4.8,
@@ -106,23 +104,48 @@ cci = [
 ]
 cci = np.array(cci)
 
-aa = [b.get_albedo([bi])[0] for bi in bb]
-
-aa = np.array(aa)
 
 
 ########### retrieve C shallow
 parameters=[0.01, 5.0,
-            0.01, 2.0,
+            0.01, 5.0,
             0.01, 0.5,
-            10]
+            100]
+legs = []
+for m in models:
+    b = Boreali(m, wavelen)
+    # get matrix with HO-model
+    model = b.get_homodel()
 
-c0 = lm.get_c_shal(parameters, model, rr0, tt, hh, aa, 4*len(tt))[1]
+    aa = np.array([b.get_albedo([bi])[0] for bi in bb])
+    
+    c0 = lm.get_c_shal(parameters, model, rr0, tt, hh, aa, 4*len(tt))[1]
+    cc0 = np.array(c0).reshape(9, 4)
+
+    plt.plot(cci[:, 0], cc0[:, 0], '-o')
+    legs += [m]
+plt.legend(legs)
+plt.show()
+
+raise
+
 c1 = lm.get_c_shal(parameters, model, rr1, tt, hh, aa, 4*len(tt))[1]
-
-
+print c0
+print c1
 cc0 = np.array(c0).reshape(9, 4)[:, :-1]
 cc1 = np.array(c1).reshape(9, 4)[:, :-1]
+
+
+c0 = lm.get_c_albe(parameters, model, rr0, tt, hh, wavelen, 6*len(tt))[1]
+c1 = lm.get_c_albe(parameters, model, rr1, tt, hh, wavelen, 6*len(tt))[1]
+print c0
+print c1
+cc0 = np.array(c0).reshape(9, 6)[:, :-3]
+cc1 = np.array(c1).reshape(9, 6)[:, :-3]
+print cc0
+print cc1
+raise
+
 
 param1n = 2
 param2n = 6
