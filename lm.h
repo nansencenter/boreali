@@ -47,7 +47,7 @@ class Hydrooptics {
     double * s;
 
     double theta;
-    double qf;
+    double Q;
     double mu0, mu01;
     
     double c0, c1, c2, a0, a1, a2, bb0, bb1, bb2, b0, b1, b2, aWAT, bbWAT, bWAT;

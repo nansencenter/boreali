@@ -83,10 +83,8 @@ int Hydrooptics :: set_theta(double inTheta){
     mu01 = cos(theta1);
     //internal surface reflectivity
     double rhoInt = 0.271 + 0.249 * mu01;
-    //Calculate Q/f factor (from theta, from the object)
-    //Q/f - conversion factor: Rrsw = R / Q/f
-	qf = PI / (1 - rhoInt);
-    //cos(sun zenith)
+    //Set Q (Eu / Lu)
+	Q = 4; // good for Michigan
     mu0 = cos(theta);
 
     return 0;
@@ -152,8 +150,8 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
     int j, k, kBest;
     
     //data for best sse
-    double ssev[4000];
-    double * ssep[4000];
+    double ssev[6000];
+    double * ssep[6000];
 
     //data for optimization with CMINPACK
     double x[6], fvec[2000], fjac[6000], tol, wa[60000], fnorm;
@@ -257,23 +255,35 @@ double HydroopticsShallow :: rrsw (const double * c, int bn){
                  + bbm[bn + 2 * bands] * c[2];
 
     // morel, 1996
-    r  = RW0 + RW1 * bb / a + RW2 * (bb * bb) / (a * a);
+    //r  = RW0 + RW1 * bb / a + RW2 * (bb * bb) / (a * a);
 
-    //sokoletsky, 2012
-    //g = bb / (a + bb);
+    g = bb / (a + bb);
+
+    //sokoletsky, 2012 (IJSP)
     //r = 0.2874 * g * (1 + 0.2821 * g - 1.019 + 0.4561);
 
-    //mu02 = 1.0;  //inwater cos(obs zenith)
-    //f2 = 1;//(1 + 0.1098 / mu01) * (1 + 0.4021 / mu02);
-    //r = 0.0512 * g * (1 + 4.6659 * g - 7.8387 * pow(g, 2) + 5.4571 * pow(g, 3)) * f2;
+    //Albert, Gege, 2006
+    mu02 = 1.0;  //inwater cos(obs zenith)
+    f2 = (1 + 0.1098 / mu01) * (1 + 0.4021 / mu02);
+    r = 0.0512 * g * (1 + 4.6659 * g - 7.8387 * pow(g, 2) + 5.4571 * pow(g, 3)) * f2;
+    
+    //GORDON, 1988
+    //r = g * (0.0949 + 0.0794 * g);
+    
+    //CRAIG, 2006
+    //r = g * (0.0895 + 0.1247 * g);
+    
     
     // shallow
     b  = bw[bn] + bm[bn + 0 * bands] * c[0]
                 + bm[bn + 1 * bands] * c[1]
                 + bm[bn + 2 * bands] * c[2] ;
 
+    //printf("%d %f %f %f %f %f %f %f", bn, a, bb, r, b, mu01, h, qf); 
+    //double insqrt = a * a + a * b * (KD0 + KD1 * mu01);
     kd = sqrt(a * a + a * b * (KD0 + KD1 * mu01)) / mu01;
-    r = r * (1 - exp(-2 * h * kd)) + al[bn] * exp(-2 * h * kd) / qf;
+    r = r * (1 - exp(-2 * h * kd)) + al[bn] * exp(-2 * h * kd) / Q;
+    //printf(" %f %f %f %f\n", al[bn], insqrt, kd, r);
 
     return r;
 };
