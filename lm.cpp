@@ -102,10 +102,10 @@ int Hydrooptics :: set_s(double * inS){
 }
 
 double Hydrooptics :: rrsw (const double * c, int bn){
-    // calculate Rrsw from given C, for a given band, for deep waters
-    double a, bb, g, r, f2;
+    // calculate Rrsw from given C, for a given band
+    double a, bb, g, f2, r;
 
-    // total absorption and backscattering
+    // deep
     a = aaw[bn] + aam[bn + 0 * bands] * c[0]
                 + aam[bn + 1 * bands] * c[1]
                 + aam[bn + 2 * bands] * c[2];
@@ -270,17 +270,19 @@ double HydroopticsShallow :: rrsw (const double * c, int bn){
 
     // deep
     r = Hydrooptics :: rrsw(c, bn);
-    
+
     // shallow
+    a = aaw[bn] + aam[bn + 0 * bands] * c[0]
+                + aam[bn + 1 * bands] * c[1]
+                + aam[bn + 2 * bands] * c[2];
+    
+    
     b  = bw[bn] + bm[bn + 0 * bands] * c[0]
                 + bm[bn + 1 * bands] * c[1]
                 + bm[bn + 2 * bands] * c[2] ;
 
-    //printf("%d %f %f %f %f %f %f %f", bn, a, bb, r, b, mu01, h, qf); 
-    //double insqrt = a * a + a * b * (KD0 + KD1 * mu01);
     kd = sqrt(a * a + a * b * (KD0 + KD1 * mu01)) / mu01;
     r = r * (1 - exp(-2 * h * kd)) + al[bn] * exp(-2 * h * kd) / Q;
-    //printf(" %f %f %f %f\n", al[bn], insqrt, kd, r);
 
     return r;
 };
