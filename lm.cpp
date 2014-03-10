@@ -103,12 +103,34 @@ int Hydrooptics :: set_s(double * inS){
 
 double Hydrooptics :: rrsw (const double * c, int bn){
     // calculate Rrsw from given C, for a given band
-    double a, bb, r;
+    double a, bb, g, f2, r;
 
     // deep
-    a = aaw[bn] + aam[bn + 0 * bands] * c[0] + aam[bn + 1 * bands] * c[1] + aam[bn + 2 * bands] * c[2];
-    bb = bbw[bn] + bbm[bn + 0 * bands] * c[0] + bbm[bn + 1 * bands] * c[1] + bbm[bn + 2 * bands] * c[2];
-    r = RW0 + RW1 * bb / a + RW2 * (bb * bb) / (a * a);
+    a = aaw[bn] + aam[bn + 0 * bands] * c[0]
+                + aam[bn + 1 * bands] * c[1]
+                + aam[bn + 2 * bands] * c[2];
+
+    bb = bbw[bn] + bbm[bn + 0 * bands] * c[0]
+                 + bbm[bn + 1 * bands] * c[1]
+                 + bbm[bn + 2 * bands] * c[2];
+
+    // morel, 1996
+    //r  = RW0 + RW1 * bb / a + RW2 * (bb * bb) / (a * a);
+
+    g = bb / (a + bb);
+
+    //sokoletsky, 2012 (IJSP)
+    //r = 0.2874 * g * (1 + 0.2821 * g - 1.019 + 0.4561);
+
+    //Albert, Gege, 2006
+    mu02 = 1.0;  //inwater cos(obs zenith)
+    f2 = (1 + 0.1098 / mu01) * (1 + 0.4021 / mu02);
+    r = 0.0512 * g * (1 + 4.6659 * g - 7.8387 * pow(g, 2) + 5.4571 * pow(g, 3)) * f2;
+
+    // deep
+    //a = aaw[bn] + aam[bn + 0 * bands] * c[0] + aam[bn + 1 * bands] * c[1] + aam[bn + 2 * bands] * c[2];
+    //bb = bbw[bn] + bbm[bn + 0 * bands] * c[0] + bbm[bn + 1 * bands] * c[1] + bbm[bn + 2 * bands] * c[2];
+    //r = RW0 + RW1 * bb / a + RW2 * (bb * bb) / (a * a);
 
     return r;
 };
@@ -243,38 +265,17 @@ int HydroopticsShallow :: set_albedo(double * inAL){
 
 double HydroopticsShallow :: rrsw (const double * c, int bn){
     // calculate Rrsw from given C, for a given band
-    double a, bb, b, kd, r, g, f2, mu02;
+    double a, bb, b, kd, r, g, f2;
 
     // deep
+    r = Hydrooptics :: rrsw(c, bn);
+
+    // shallow
     a = aaw[bn] + aam[bn + 0 * bands] * c[0]
                 + aam[bn + 1 * bands] * c[1]
                 + aam[bn + 2 * bands] * c[2];
-
-    bb = bbw[bn] + bbm[bn + 0 * bands] * c[0]
-                 + bbm[bn + 1 * bands] * c[1]
-                 + bbm[bn + 2 * bands] * c[2];
-
-    // morel, 1996
-    //r  = RW0 + RW1 * bb / a + RW2 * (bb * bb) / (a * a);
-
-    g = bb / (a + bb);
-
-    //sokoletsky, 2012 (IJSP)
-    //r = 0.2874 * g * (1 + 0.2821 * g - 1.019 + 0.4561);
-
-    //Albert, Gege, 2006
-    mu02 = 1.0;  //inwater cos(obs zenith)
-    f2 = (1 + 0.1098 / mu01) * (1 + 0.4021 / mu02);
-    r = 0.0512 * g * (1 + 4.6659 * g - 7.8387 * pow(g, 2) + 5.4571 * pow(g, 3)) * f2;
-    
-    //GORDON, 1988
-    //r = g * (0.0949 + 0.0794 * g);
-    
-    //CRAIG, 2006
-    //r = g * (0.0895 + 0.1247 * g);
     
     
-    // shallow
     b  = bw[bn] + bm[bn + 0 * bands] * c[0]
                 + bm[bn + 1 * bands] * c[1]
                 + bm[bn + 2 * bands] * c[2] ;
