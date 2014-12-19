@@ -1,4 +1,4 @@
-CFLAGS=-w -fPIC
+CFLAGS=-I/usr/include/cminpack-1/ -L/usr/lib64/ -I/usr/include/python2.6/ -I/usr/lib64/python2.6/site-packages/numpy/core/include/ -w -fPIC
 
 all: _lm.so
 
