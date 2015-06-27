@@ -48,7 +48,7 @@ int Hydrooptics :: set_model(double * model){
     // into the object
 
     int bn;
-    
+
     for (bn = 0; bn < bands; bn ++){
         aaw[bn] = model[bn + 0 * bands];
         aam[bn + 0 * bands] = model[bn + 1 * bands];
@@ -66,7 +66,7 @@ int Hydrooptics :: set_model(double * model){
         bm[bn + 1 * bands] = model[bn + 6 * bands] / B_TSM;
         bm[bn + 2 * bands] = 0;
     }
-        
+
     return 0;
 }
 
@@ -74,7 +74,7 @@ int Hydrooptics :: set_theta(double inTheta){
     //set gemetrical-optical conditions
     //used when calculating Rrsw and C
     int bn;
-    
+
     // sun zenith
     theta = inTheta * PI / 180.;
     //inwater sun zenith
@@ -84,7 +84,10 @@ int Hydrooptics :: set_theta(double inTheta){
     //internal surface reflectivity
     double rhoInt = 0.271 + 0.249 * mu01;
     //Set Q (Eu / Lu)
-	Q = 4; // good for Michigan
+    Q = 4; // good for Michigan
+    //Q = 3.14; // try 1 for Saginaw
+    //Q = 5; // try 2 for Saginaw
+
     mu0 = cos(theta);
 
     return 0;
@@ -94,7 +97,7 @@ int Hydrooptics :: set_s(double * inS){
     //set values of measured remote sensing reflectance
     //used when calculating C
     int bn;
-    
+
     for (bn = 0; bn < bands; bn ++){
         //measured reflectance
         s[bn] = inS[bn];
@@ -103,7 +106,7 @@ int Hydrooptics :: set_s(double * inS){
 
 double Hydrooptics :: rrsw (const double * c, int bn){
     // calculate Rrsw from given C, for a given band
-    double a, bb, g, f2, r;
+    double a, bb, g, f2, r_rsw;
 
     // deep
     a = aaw[bn] + aam[bn + 0 * bands] * c[0]
@@ -125,22 +128,22 @@ double Hydrooptics :: rrsw (const double * c, int bn){
     //Albert, Gege, 2006
     mu02 = 1.0;  //inwater cos(obs zenith)
     f2 = (1 + 0.1098 / mu01) * (1 + 0.4021 / mu02);
-    r = 0.0512 * g * (1 + 4.6659 * g - 7.8387 * pow(g, 2) + 5.4571 * pow(g, 3)) * f2;
-    
+    r_rsw = 0.0512 * g * (1 + 4.6659 * g - 7.8387 * pow(g, 2) + 5.4571 * pow(g, 3)) * f2;
+
     //GORDON, 1988
     //r = g * (0.0949 + 0.0794 * g);
-    
+
     //CRAIG, 2006
     //r = g * (0.0895 + 0.1247 * g);
 
-    return r;
+    return r_rsw;
 };
 
 double Hydrooptics :: rs (const double * c, int bn){
     // calcucate cost function per band
     double rs;
     rs = rrsw(c, bn) - s[bn];
-    
+
     //printf("params:%f %f %f\n", parameters[1], parameters[3], parameters[5]);
     if (c[0] < parameters[0] ||
         c[0] > parameters[1] ||
@@ -168,10 +171,10 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
 
     bool log1 = false;
     bool log2 = false;
-    
+
     int startBestCN = parameters[6];
     int j, k, kBest;
-    
+
     //data for best sse
     double ssev[6000];
     double * ssep[6000];
@@ -181,35 +184,35 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
     int info, ipvt[12], lwa = 200;
     //set tolerance to square of the machine recision
     tol = sqrt(dpmpar(1));
-    
+
     //erase xBest
     for (j = 0; j < (cpas+1); j ++)
         xBest[j] = 100;
 
     //estimate SSE for all starting vectors
     for (k = 0; k < startCN; k ++){
-        
+
         // set initial concentrations
         if (log1 and log2) printf("start [%d]: ", k);
         for (j = 0; j < cpas; j ++){
             x[j] = startC[k * cpas + j];
             if (log1 and log2) printf("%5.2g ", (double)x[j]);
         };
-        
+
         // keep SSE value and pointer to SSE
         ssev[k] = sse(x);
         ssep[k] = &ssev[k];
         if (log1 and log2) printf("orig: %f %u\n", ssev[k], ssep[k]);
     }
-    
+
     //sort SSE pointers
     qsort(ssep, startCN, sizeof *ssep, compare);
-    
+
     // start optimization from <startBestCN> best starting vectors
     for (k = 0; k < startBestCN; k ++){
         //get index of the k-th best starting vector
         kBest = ssep[k]-ssev;
-        
+
         // set initial concentrations
         if (log1) printf("start [%d / %d / %f]: ", k, kBest, ssev[kBest]);
         for (j = 0; j < cpas; j ++){
@@ -219,7 +222,7 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
 
         //perform optimization using CMINPACK
         info = lmdif1(fcn, this, bands, cpas, x, fvec, tol, ipvt, wa, lwa);
-        
+
         //estimate norm of residuals
         fnorm = enorm(bands, fvec);
 
@@ -229,7 +232,7 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
                 printf("%5.2g ", (double)x[j]);
             printf("%7.4g / %7.4g\n", (double)fnorm, sse(x));
         }
-        
+
         if (fnorm < xBest[cpas]){
             for (j = 0; j < cpas; j ++)
                 xBest[j] = (double)x[j];
@@ -244,7 +247,7 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
         }
         printf("\n");
     }
-    
+
     return 0;
 }
 
@@ -266,25 +269,28 @@ int HydroopticsShallow :: set_albedo(double * inAL){
 
 double HydroopticsShallow :: rrsw (const double * c, int bn){
     // calculate Rrsw from given C, for a given band
-    double a, bb, b, kd, r;
+    double a, bb, b, kd, r_rsw, r_rs;
 
-    // deep
-    r = Hydrooptics :: rrsw(c, bn);
+    // deep subsurface
+    r_rsw = Hydrooptics :: rrsw(c, bn);
+
+    // deep: convert from subsurface to above surface
+    r_rs = 0.52 * r_rsw / (1 - 1.7 * r_rsw);
 
     // shallow
     a = aaw[bn] + aam[bn + 0 * bands] * c[0]
                 + aam[bn + 1 * bands] * c[1]
                 + aam[bn + 2 * bands] * c[2];
-    
-    
+
+
     b  = bw[bn] + bm[bn + 0 * bands] * c[0]
                 + bm[bn + 1 * bands] * c[1]
                 + bm[bn + 2 * bands] * c[2] ;
 
     kd = sqrt(a * a + a * b * (KD0 + KD1 * mu01)) / mu01;
-    r = r * (1 - exp(-2 * h * kd)) + al[bn] * exp(-2 * h * kd) / Q;
+    r_rs = r_rs * (1 - exp(-2 * h * kd)) + al[bn] * exp(-2 * h * kd) / Q;
 
-    return r;
+    return r_rs;
 };
 
 /// ============================== HydroopticsAlbedo ==========================
@@ -323,7 +329,7 @@ double HydroopticsAlbedo :: rrsw (const double * c, int bn){
 
 double HydroopticsAlbedo :: rs (const double * c, int bn){
     double rs;
-    
+
     rs = rrsw(c, bn) - s[bn];
 
     if (c[0] < parameters[0] ||
@@ -347,15 +353,15 @@ int startingCPA(double parameters[6], double * startC){
     double starts = 7.;
     int k;
     int fullSize = starts * starts * starts;
-    
+
     double min0 = parameters[0], max0 = parameters[1];
     double min1 = parameters[2], max1 = parameters[3];
     double min2 = parameters[4], max2 = parameters[5];
-    
+
     dc0 = (max0 - min0) / (starts - 1);
     dc1 = (max1 - min1) / (starts - 1);
     dc2 = (max2 - min2) / (starts - 1);
-    
+
     k = 0;
     c0 = min0;
     for (ci0 = 0; ci0 < starts; ci0 ++){
@@ -384,19 +390,19 @@ int startingCPA_al(double parameters[6], double * startC){
     double starts = 5.;
     int k;
     int fullSize = starts * starts * starts * starts * starts;
-    
+
     double min0 = parameters[0], max0 = parameters[1];
     double min1 = parameters[2], max1 = parameters[3];
     double min2 = parameters[4], max2 = parameters[5];
     double min3 = 0.0, max3 = 1.0;
     double min4 = 0.0, max4 = 1.0;
-    
+
     dc0 = (max0 - min0) / (starts - 1);
     dc1 = (max1 - min1) / (starts - 1);
     dc2 = (max2 - min2) / (starts - 1);
     dc3 = (max3 - min3) / (starts - 1);
     dc4 = (max4 - min4) / (starts - 1);
-    
+
     k = 0;
     c0 = min0;
     for (ci0 = 0; ci0 < starts; ci0 ++){
@@ -408,13 +414,13 @@ int startingCPA_al(double parameters[6], double * startC){
                 for (ci3 = 0; ci3 < starts; ci3 ++){
                     c4 = min4;
                     for (ci4 = 0; ci4 < starts; ci4 ++){
-        
+
                         startC[k * 5 + 0] = c0;
                         startC[k * 5 + 1] = c1;
                         startC[k * 5 + 2] = c2;
                         startC[k * 5 + 3] = c3;
                         startC[k * 5 + 4] = c4;
-        
+
                         k ++;
                         c4 += dc4;
                     }
@@ -495,7 +501,7 @@ extern int get_rrsw_albe(
 
     int bn;
     double parameters[7] = {0, 0, 0, 0, 0, 0, 0};
-    
+
     //init HO-object
     HydroopticsAlbedo ho(parameters, outR_n0, model, lambda);
 
@@ -517,7 +523,7 @@ int compare (const void * v1, const void * v2)
 {
     const double d1 = **(const double **)v1;
     const double d2 = **(const double **)v2;
-    
+
     return d1<d2?-1:(d1>d2);
 }
 
@@ -535,7 +541,7 @@ extern int get_c_deep(double parameters[7],
     Hydrooptics ho(parameters, inR_cols, model);
 
     printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
-    
+
     double startC[3000], xBest[6];
     // create starting vecotrs
     int startCN = startingCPA(parameters, startC);
@@ -545,7 +551,7 @@ extern int get_c_deep(double parameters[7],
 
         // set hydro-optical conditions
         ho.set_theta(theta[i]);
-        
+
         // set measured reflectance
         ho.set_s(inR + i*bands);
 
@@ -556,7 +562,7 @@ extern int get_c_deep(double parameters[7],
         for (j = 0; j < (cpas+1); j ++){
             outC[j + i*(cpas+1)] = xBest[j];
         }
-    
+
         if (fmod(i, 100.) == 0.)
             printf("%d / %f \n", i, (double)(i) / (double)(pixels));
 
@@ -579,12 +585,12 @@ extern int get_c_shal(double parameters[7],
 
     int i, j, startCN, bands = inR_cols, pixels = inR_rows, cpas=3;
     double startC[3000], xBest[6];
-    
+
     //init HO-object
     HydroopticsShallow ho(parameters, inR_cols, model);
 
     printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
-    
+
     // create starting vecotrs
     startCN = startingCPA(parameters, startC);
 
@@ -593,7 +599,7 @@ extern int get_c_shal(double parameters[7],
 
         // set hydro-optical conditions
         ho.set_theta(theta[i]);
-        
+
         // set measured reflectance, albedo and depth
         ho.set_s(inR + i*bands);
         ho.set_albedo(albedo + i*bands);
@@ -606,7 +612,7 @@ extern int get_c_shal(double parameters[7],
         for (j = 0; j < (cpas+1); j ++){
             outC[j + i*(cpas+1)] = xBest[j];
         }
-    
+
         if (fmod(i, 100.) == 0.)
             printf("%d / %f \n", i, (double)(i) / (double)(pixels));
 
@@ -630,12 +636,12 @@ extern int get_c_albe(double parameters[7],
 
     int i, j, startCN, bands = inR_cols, pixels = inR_rows, cpas=5;
     double startC[16000], xBest[6];
-    
+
     //init HO-object
     HydroopticsAlbedo ho(parameters, inR_cols, model, lambda);
 
     printf("Retrieval from %d bands x %d pixels...\n", bands, pixels);
-    
+
     // create starting vecotrs
     startCN = startingCPA_al(parameters, startC);
     printf("Starting CPA - OK!\n");
@@ -645,7 +651,7 @@ extern int get_c_albe(double parameters[7],
 
         // set hydro-optical conditions
         ho.set_theta(theta[i]);
-        
+
         // set measured reflectance and depth
         ho.set_s(inR + i*bands);
         ho.h = h[i];
@@ -657,7 +663,7 @@ extern int get_c_albe(double parameters[7],
         for (j = 0; j < (cpas+1); j ++){
             outC[j + i*(cpas+1)] = xBest[j];
         }
-    
+
         if (fmod(i, 100.) == 0.)
             printf("%d / %f \n", i, (double)(i) / (double)(pixels));
     }
@@ -674,7 +680,7 @@ int fcn(void *p, int m, int n, const double *x, double *fvec, int iflag){
     int bn, vn;
     Hydrooptics *ho = (Hydrooptics *)p;
     double rsval, rssum;
-    
+
         // calculate cost function
         rssum = 0;
         for (bn = 0; bn < m; bn ++){
@@ -682,6 +688,6 @@ int fcn(void *p, int m, int n, const double *x, double *fvec, int iflag){
             fvec[bn] = rsval;
             rssum += ho -> rs(x, bn);
         };
-    
+
     return 0;
 };
