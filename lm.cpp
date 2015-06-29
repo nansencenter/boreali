@@ -143,6 +143,7 @@ double Hydrooptics :: rs (const double * c, int bn){
     // calcucate cost function per band
     double rs;
     rs = rrsw(c, bn) - s[bn];
+    //printf("RS: %d %g\n", bn, rs);
 
     //printf("params:%f %f %f\n", parameters[1], parameters[3], parameters[5]);
     if (c[0] < parameters[0] ||
@@ -160,8 +161,9 @@ double  Hydrooptics :: sse (const double * c){
     double sse = 0;
     int bn;
 
-    for (bn = 0; bn < bands; bn ++)
-        sse += pow(rs(c, bn), 2);
+    for (bn = 0; bn < bands; bn ++) sse += pow(rs(c, bn), 2);
+    sse = sqrt(sse);
+    //printf("%g %g %g %g\n", c[0], c[1], c[2], sse);
 
     return sse;
 };
@@ -180,8 +182,8 @@ int Hydrooptics :: retrieve(int cpas, int startCN, double * startC, double * xBe
     double * ssep[6000];
 
     //data for optimization with CMINPACK
-    double x[6], fvec[2000], fjac[6000], tol, wa[60000], fnorm;
-    int info, ipvt[12], lwa = 200;
+    double x[6], fvec[20000], tol, wa[600000], fnorm;
+    int info, ipvt[120], lwa = 2000;
     //set tolerance to square of the machine recision
     tol = sqrt(dpmpar(1));
 
@@ -677,17 +679,12 @@ extern int get_c_albe(double parameters[7],
 // functions uses finite difference derivatives of Rrsw
 int fcn(void *p, int m, int n, const double *x, double *fvec, int iflag){
 
-    int bn, vn;
+    int bn;
     Hydrooptics *ho = (Hydrooptics *)p;
-    double rsval, rssum;
+    //printf("fcn: %g %g %g %g\n", x[0], x[1], x[2], ho -> rs(x, 5));
 
-        // calculate cost function
-        rssum = 0;
-        for (bn = 0; bn < m; bn ++){
-            rsval = ho -> rs(x, bn);
-            fvec[bn] = rsval;
-            rssum += ho -> rs(x, bn);
-        };
+    // calculate cost function
+    for (bn = 0; bn < m; bn ++) fvec[bn] = ho -> rs(x, bn);
 
     return 0;
 };
